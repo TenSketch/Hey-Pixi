@@ -13,18 +13,18 @@ export const rateLimit = (options?: Options) => {
     })
 
     return {
-        check: (limit: number, token: string) => {
+        check: (limit: number, token: string, weight: number = 1) => {
             const tokenCount = (tokenCache.get(token) as number[]) || [0]
             if (tokenCount[0] === 0) {
                 tokenCache.set(token, tokenCount)
             }
-            tokenCount[0] += 1
+            tokenCount[0] += weight
 
             const currentUsage = tokenCount[0]
             const isRateLimited = currentUsage > limit
             const headers = {
                 'X-RateLimit-Limit': limit.toString(),
-                'X-RateLimit-Remaining': isRateLimited ? '0' : (limit - currentUsage).toString(),
+                'X-RateLimit-Remaining': Math.max(0, limit - currentUsage).toString(),
             }
 
             return {

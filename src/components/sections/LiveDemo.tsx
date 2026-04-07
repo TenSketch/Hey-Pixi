@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import { Send, Bot, ShoppingBag, Stethoscope, Briefcase, RefreshCcw, Check } from "lucide-react"
+import { Send, Bot, ShoppingBag, Stethoscope, Briefcase, RefreshCcw } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 
 // Types of Pixi Personalities
@@ -78,7 +78,8 @@ export function LiveDemo() {
       setIsTyping(true)
 
       try {
-        const response = await fetch('/api/chat', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

@@ -87,7 +87,7 @@ export function Hero() {
                              <Bot size={14} />
                          </div>
                          <div className="bg-white rounded-2xl rounded-tl-sm p-4 text-slate-700 text-sm leading-relaxed max-w-[85%] shadow-sm border border-slate-100">
-                             <p>Hey there! 👋 I see you're checking out the Enterprise plan. Want me to break down the volume discounts?</p>
+                             <p>Hey there! 👋 I see you&apos;re checking out the Enterprise plan. Want me to break down the volume discounts?</p>
                          </div>
                      </motion.div>
 
@@ -149,7 +149,7 @@ export function Hero() {
                              <Bot size={14} />
                          </div>
                          <div className="bg-white rounded-2xl rounded-tl-sm p-4 text-slate-700 text-sm leading-relaxed max-w-[85%] shadow-sm border border-slate-100 space-y-3">
-                             <p>Got it! Here's what I found:</p> 
+                             <p>Got it! Here&apos;s what I found:</p> 
                              <div className="p-3 bg-gradient-to-r from-brand/5 to-sky-500/5 rounded-xl border border-brand/10">
                                  <div className="flex justify-between items-center mb-1">
                                      <span className="font-bold text-xs uppercase tracking-wider text-slate-500">Enterprise 50+</span>

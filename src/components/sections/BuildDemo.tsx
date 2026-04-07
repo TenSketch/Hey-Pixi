@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/Button"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bot, Globe, FileText, CheckCircle2, ArrowRight, Sparkles, Wand2, ChevronRight, User, ShoppingCart, Headset, BarChart3, Send, X, RefreshCcw } from "lucide-react"
+import { Bot, Globe, FileText, CheckCircle2, ArrowRight, Sparkles, Wand2, ChevronRight, User, ShoppingCart, Headset, BarChart3, Send, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 
@@ -50,7 +50,8 @@ function TestChatWindow({ botName, role, url, onClose }: { botName: string, role
         setIsLoading(true)
 
         try {
-            const res = await fetch('/api/chat', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
+            const res = await fetch(apiUrl, {
                 method: 'POST',
                 body: JSON.stringify({
                     message: userMsg.text,
@@ -60,7 +61,7 @@ function TestChatWindow({ botName, role, url, onClose }: { botName: string, role
             })
             const data = await res.json()
             setMessages(prev => [...prev, { id: Date.now() + 1, text: data.result, sender: 'bot' }])
-        } catch (err) {
+        } catch {
             setMessages(prev => [...prev, { id: Date.now() + 1, text: "Connection error.", sender: 'bot' }])
         } finally {
             setIsLoading(false)

@@ -1,45 +1,21 @@
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { NextResponse } from "next/server";
-
-// Personas and their secure system prompts
-// Personas and their secure system prompts
-const PERSONAS: Record<string, string> = {
-    general: `You are Pixi, a warm and intelligent AI assistant for "TenSketch", a design-led engineering firm. 
-    Your tone is conversational, professional, and helpful. Avoid robotic lists.
-    Focus on explaining TenSketch's services: Web App Development, UI/UX Design, and AI Integration.
-    Keep answers concise (2-3 sentences max) and natural. Use an emoji only if it fits the vibe.`,
-
-    healthcare: `You are "Care Pixi", a medical reception assistant for City Hospital.
-    Your tone is empathetic, calm, and reassuring. Speak like a caring human receptionist.
-    Your goals: Check appointment needs or lightly screen symptoms (clarify you aren't a doctor).
-    Never give medical advice. If asked, say "I can't provide medical advice, but I can help you book a visit."
-    Keep responses short and soft.`,
-
-    ecommerce: `You are "Style Pixi", a vibrant sales assistant for a trendy fashion store.
-    Your tone is enthusiastic and personal—like a helpful friend shopping with you! 🛍️
-    Avoid long lists. Instead, give specific, punchy recommendations.
-    Mention "Free Shipping over $50" casually.
-    Keep it fun, short, and engaging.`,
-
-    saas: `You are "Tech Pixi", a support agent for "SaaSY".
-    Your tone is precise but approachable. Avoid sounding like a manual.
-    Explain technical concepts simply (API Keys, Webhooks, SSO).
-    Use code blocks if sharing code, but keep explanations conversational.
-    Be helpful and solution-focused.`,
-};
-
 import { rateLimit } from "@/lib/rate-limit";
+import { auth } from "@/auth";
+import dbConnect from "@/lib/mongodb";
+import { BotConfig, Lead } from "@/models";
+import { sendWhatsAppNotification } from "@/lib/gupshup";
 
 const limiter = rateLimit({
-    interval: 60 * 1000, // 60 seconds
-    uniqueTokenPerInterval: 500, // Max 500 users per second
+    interval: 60 * 1000, 
+    uniqueTokenPerInterval: 500, 
 });
 
 export async function POST(req: Request) {
-    // 1. Rate Limiting Strategy
-    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-    const { isRateLimited, headers } = limiter.check(10, ip); // 10 requests / minute
+    const session = await auth();
+    const token = session?.user?.email || req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const { isRateLimited, headers } = limiter.check(10, token); 
 
     if (isRateLimited) {
         return NextResponse.json(
@@ -49,31 +25,108 @@ export async function POST(req: Request) {
     }
 
     try {
-        const { message, persona, systemPrompt } = await req.json();
+        const { message, botId, history = [] } = await req.json();
 
-        // Validate API Key
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) {
             return NextResponse.json({ error: "API Key missing" }, { status: 500 });
         }
 
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const groq = new Groq({ apiKey });
 
-        // Prioritize custom system prompt (from Build Demo) over predefined personas
-        const instruction = systemPrompt || PERSONAS[persona] || PERSONAS['general'];
+        let systemPrompt = "You are a helpful assistant.";
+        let internalBotId = null;
+        let botSnapshot: any = null;
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            systemInstruction: instruction
+        // Fetch custom bot from DB
+        if (botId && botId !== 'custom') {
+           await dbConnect();
+           const bot = await BotConfig.findById(botId);
+           if (bot) {
+               systemPrompt = bot.systemPrompt;
+               internalBotId = bot._id;
+               botSnapshot = bot;
+           }
+        } else {
+           // Fallback for landing page testing
+           systemPrompt = `You are a helpful assistant. Provide concise answers.`;
+        }
+
+        const messages = [
+            { role: "system", content: systemPrompt },
+            ...history.map((m: { sender: string; text: string }) => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
+            { role: "user", content: message }
+        ];
+
+        // We use function calling to let the AI flag when a user provides contact info
+        const tools = [
+            {
+                type: "function" as const,
+                function: {
+                    name: "capture_lead_info",
+                    description: "Call this function ONLY when the user provides their Name AND Phone Number or Email to be contacted. Do NOT call this if they just say 'Hi my name is John'. Only call when they are expressing intent to be contacted (e.g., 'call me at 555-1234').",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            name: { type: "string" },
+                            phone: { type: "string" },
+                            email: { type: "string" },
+                        },
+                        required: ["name"]
+                    }
+                }
+            }
+        ];
+
+        const chatCompletion = await groq.chat.completions.create({
+            messages,
+            model: "llama-3.3-70b-versatile",
+            tools,
+            tool_choice: "auto",
         });
 
-        const result = await model.generateContent(message);
-        const response = await result.response;
-        const text = response.text();
+        const responseMessage = chatCompletion.choices[0]?.message;
+        let text = responseMessage?.content || "";
+
+        // Check if the AI decided to call the lead capture tool
+        if (responseMessage?.tool_calls && internalBotId) {
+            for (const toolCall of responseMessage.tool_calls) {
+                if (toolCall.function.name === 'capture_lead_info') {
+                    const args = JSON.parse(toolCall.function.arguments);
+                    
+                    // Save to MongoDB!
+                    try {
+                        await Lead.create({
+                            botId: internalBotId,
+                            name: args.name,
+                            phone: args.phone,
+                            email: args.email,
+                            lastMessage: message,
+                            transcript: history.concat({ text: message, sender: 'user' }), // Rough transcript
+                            status: "new"
+                        });
+
+                        // 💡 WhatsApp Notification Trigger (only if opted-in)
+                        if (botSnapshot?.notificationPhone && botSnapshot?.whatsAppOptIn) {
+                            sendWhatsAppNotification(botSnapshot.notificationPhone, {
+                                name: args.name,
+                                phone: args.phone,
+                                email: args.email,
+                                botName: botSnapshot.name
+                            }).catch(console.error); // Fire and forget but log errors
+                        }
+
+                        text = "I have successfully saved your contact details. Our team will reach out to you shortly!";
+                    } catch (e) {
+                        console.error("Failed to save lead", e);
+                    }
+                }
+            }
+        }
 
         return NextResponse.json({ result: text });
     } catch (error) {
-        console.error("Gemini API Error:", error);
+        console.error("Groq API Error:", error);
         return NextResponse.json({ error: "Failed to generate response" }, { status: 500 });
     }
 }

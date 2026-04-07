@@ -63,7 +63,7 @@ export function ChatbotTypes() {
             Built for <span className="text-brand">Every Goal</span>
           </h2>
           <p className="text-slate-600 text-lg">
-            Whether you need to sell more, support better, or work smarter, there's a specialized Pixi agent for you.
+            Whether you need to sell more, support better, or work smarter, there&apos;s a specialized Pixi agent for you.
           </p>
         </div>
 
