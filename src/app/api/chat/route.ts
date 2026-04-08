@@ -43,7 +43,7 @@ export async function POST(req: Request) {
            await dbConnect();
            const bot = await BotConfig.findById(botId);
            if (bot) {
-               systemPrompt = bot.systemPrompt;
+               systemPrompt = `${bot.systemPrompt}\n\nCRITICAL INSTRUCTION: Keep all your responses extremely brief, conversational, and highly concise. Never write long essays, large paragraphs, or extensive lists. Respond like a human texting in a chat widget (maximum 2-3 short sentences per message). If explaining features or pricing, give only a high-level summary and ask a quick follow-up question.`;
                internalBotId = bot._id;
                botSnapshot = bot;
            }
