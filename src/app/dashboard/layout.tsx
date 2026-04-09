@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import Link from "next/link";
 import { Bot, BarChart3, Ticket, Activity, User } from "lucide-react";
+import { SignOutButton } from "@/components/dashboard/SignOutButton";
 
 export default async function DashboardLayout({
   children,
@@ -50,6 +51,7 @@ export default async function DashboardLayout({
                 <p className="text-sm font-semibold text-slate-900 truncate">{session?.user?.name || "User"}</p>
                 <p className="text-xs text-slate-500 truncate">{session?.user?.email}</p>
             </div>
+            <SignOutButton />
         </div>
       </aside>
 

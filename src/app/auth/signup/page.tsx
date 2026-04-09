@@ -43,20 +43,11 @@ export default function SignUpPage() {
       }
 
       // 3. Auto-login after successful registration
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        callbackUrl: "/dashboard",
       });
-
-      if (result?.error) {
-        setError("Account created, but auto-login failed. Please sign in manually.");
-        setTimeout(() => router.push("/auth/signin"), 2000);
-      } else {
-        router.push("/dashboard");
-        router.refresh();
-      }
-
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
       setError(message);

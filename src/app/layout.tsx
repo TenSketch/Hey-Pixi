@@ -32,7 +32,20 @@ export default function RootLayout({
       >
         <AuthProvider>
           {children}
-          <Toaster position="top-center" richColors />
+          <Toaster 
+            position="top-center" 
+            richColors 
+            expand={false}
+            toastOptions={{
+              style: {
+                borderRadius: '16px',
+                border: '1px solid rgba(226, 232, 240, 0.8)',
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(8px)',
+              },
+              className: 'font-sans',
+            }}
+          />
         </AuthProvider>
       </body>
     </html>

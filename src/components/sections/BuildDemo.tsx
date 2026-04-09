@@ -180,7 +180,7 @@ export function BuildDemo() {
         {/* Simple Background Pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
         
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         
         <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-slate-900">Build Your Custom <span className="text-brand">AI Agent</span></h2>
@@ -189,10 +189,10 @@ export function BuildDemo() {
             </p>
         </div>
 
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto w-full">
             {/* Progress Stepper */}
             <div className="flex justify-center mb-8">
-                <div className="flex items-center gap-4 bg-white p-3 px-6 shadow-sm border border-slate-200">
+                <div className="flex items-center gap-2 sm:gap-4 bg-white p-3 px-3 sm:px-6 shadow-sm border border-slate-200 overflow-x-auto max-w-full">
                     {STEPS.map((step, idx) => (
                         <div key={idx} className="flex items-center">
                             <div className={cn(
@@ -201,10 +201,10 @@ export function BuildDemo() {
                                 idx < currentStep ? "text-brand bg-brand-light border-brand/20" : "text-slate-400"
                             )}>
                                 {idx < currentStep ? <CheckCircle2 size={16} /> : <step.icon size={16} />}
-                                <span className="font-mono">{step.title}</span>
+                                <span className="font-mono hidden sm:inline">{step.title}</span>
                             </div>
                             {idx < STEPS.length - 1 && (
-                                <div className="w-8 h-px bg-slate-200 mx-2" />
+                                <div className="w-8 h-px bg-slate-200 mx-1 sm:mx-2" />
                             )}
                         </div>
                     ))}
@@ -226,176 +226,149 @@ export function BuildDemo() {
                     )}
                 </AnimatePresence>
 
-                <div className="flex-1 p-8 md:p-12">
-                    <AnimatePresence mode="wait">
-                        
-                        {/* Step 1: Select Role */}
-                        {currentStep === 0 && (
-                            <motion.div
-                                key="step1"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="h-full flex flex-col"
-                            >
-                                <h3 className="text-2xl font-bold text-slate-900 mb-2 font-mono">SELECT_ROLE</h3>
-                                <p className="text-slate-500 mb-8 font-mono text-sm">Target objective for new agent instance.</p>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {ROLES.map((role) => (
-                                        <button
-                                            key={role.id}
-                                            onClick={() => setSelectedRole(role.id)}
-                                            className={cn(
-                                                "p-6 border-2 text-left transition-all hover:translate-x-1 group",
-                                                selectedRole === role.id 
-                                                    ? "border-brand bg-brand-light/30" 
-                                                    : "border-slate-100 bg-slate-50 hover:border-slate-300 hover:bg-white"
-                                            )}
-                                        >
-                                            <div className={cn(
-                                                "w-12 h-12 flex items-center justify-center mb-4 transition-colors",
-                                                selectedRole === role.id ? "bg-brand text-white" : "bg-white text-slate-400 group-hover:text-brand shadow-sm border border-slate-200"
-                                            )}>
-                                                <role.icon size={24} />
-                                            </div>
-                                            <h4 className="font-bold text-slate-900 text-lg mb-1 font-mono">{role.title}</h4>
-                                            <p className="text-sm text-slate-500">{role.desc}</p>
-                                        </button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
+                <div className="flex-1 p-6 md:p-12 overflow-y-auto">
+                    {/* Step 1: Select Role */}
+                    {currentStep === 0 && (
+                        <div className="h-full flex flex-col min-w-0">
+                            <h3 className="text-2xl font-bold text-slate-900 mb-2 font-mono">SELECT_ROLE</h3>
+                            <p className="text-slate-500 mb-8 font-mono text-sm">Target objective for new agent instance.</p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
+                                {ROLES.map((role) => (
+                                    <button
+                                        key={role.id}
+                                        onClick={() => setSelectedRole(role.id)}
+                                        className={cn(
+                                            "p-4 sm:p-6 border-2 text-left transition-all hover:bg-slate-50 group w-full",
+                                            selectedRole === role.id 
+                                                ? "border-brand bg-brand-light/30" 
+                                                : "border-slate-100 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "w-12 h-12 flex items-center justify-center mb-4 transition-colors",
+                                            selectedRole === role.id ? "bg-brand text-white" : "bg-white text-slate-400 group-hover:text-brand shadow-sm border border-slate-200"
+                                        )}>
+                                            <role.icon size={24} />
+                                        </div>
+                                        <h4 className="font-bold text-slate-900 text-lg mb-1 font-mono">{role.title}</h4>
+                                        <p className="text-sm text-slate-500">{role.desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                        {/* Step 2: Connect Data */}
-                        {currentStep === 1 && (
-                            <motion.div
-                                key="step2"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="h-full flex flex-col"
-                            >
-                                <h3 className="text-2xl font-bold text-slate-900 mb-2 font-mono">DATA_INGESTION</h3>
-                                <p className="text-slate-500 mb-8 font-mono text-sm">Provide source URL for knowledge base training.</p>
+                    {/* Step 2: Connect Data */}
+                    {currentStep === 1 && (
+                        <div className="h-full flex flex-col min-w-0">
+                            <h3 className="text-2xl font-bold text-slate-900 mb-2 font-mono">DATA_INGESTION</h3>
+                            <p className="text-slate-500 mb-8 font-mono text-sm">Provide source URL for knowledge base training.</p>
+                            
+                            <div className="space-y-6 sm:space-y-8 max-w-lg mx-auto w-full my-auto px-1">
+                                <div className="relative group">
+                                    <label className="text-sm font-bold text-slate-700 mb-2 block uppercase tracking-wide font-mono">SOURCE_URL</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Globe className="text-slate-400 group-focus-within:text-brand transition-colors" size={20} />
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={url}
+                                            onChange={(e) => setUrl(e.target.value)}
+                                            placeholder="https://your-business.com" 
+                                            className="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 pl-12 pr-4 py-4 focus:ring-0 focus:border-brand outline-none transition-all font-mono font-medium rounded-none"
+                                        />
+                                    </div>
+                                </div>
                                 
-                                <div className="space-y-8 max-w-lg mx-auto w-full my-auto">
-                                    <div className="relative group">
-                                        <label className="text-sm font-bold text-slate-700 mb-2 block uppercase tracking-wide font-mono">SOURCE_URL</label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                <Globe className="text-slate-400 group-focus-within:text-brand transition-colors" size={20} />
-                                            </div>
+                                <div className="relative flex items-center py-2">
+                                    <div className="flex-grow border-t border-slate-200"></div>
+                                    <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-wider">Or</span>
+                                    <div className="flex-grow border-t border-slate-200"></div>
+                                </div>
+
+                                <div className="flex justify-center">
+                                        <Button variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50 hover:text-brand rounded-none w-full h-12">
+                                        <FileText className="mr-2 h-4 w-4" />
+                                        Upload Documents
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Identity & Launch */}
+                    {currentStep === 2 && !isFinished && (
+                        <div className="h-full flex flex-col min-w-0">
+                            {isTraining ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                                    <div className="relative w-24 h-24 mb-8">
+                                        <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+                                        <div className="absolute inset-0 border-4 border-t-brand border-r-brand border-b-transparent border-l-transparent rounded-full animate-spin" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Sparkles className="text-brand animate-pulse fill-brand" size={32} />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Training your AI...</h3>
+                                    <p className="text-slate-500 animate-pulse">Reading website content • Analyzing tone • Generating responses</p>
+                                </div>
+                            ) : (
+                                <div className="h-full flex flex-col min-w-0">
+                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Name your Agent</h3>
+                                    <p className="text-slate-500 mb-8">Give your new AI employee a name.</p>
+                                    
+                                    <div className="max-w-md mx-auto w-full my-auto space-y-6 px-1">
+                                        <div>
+                                            <label className="text-sm font-bold text-slate-700 mb-2 block uppercase tracking-wide">Agent Name</label>
                                             <input 
                                                 type="text" 
-                                                value={url}
-                                                onChange={(e) => setUrl(e.target.value)}
-                                                placeholder="https://your-business.com" 
-                                                className="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 pl-12 pr-4 py-4 focus:ring-0 focus:border-brand outline-none transition-all font-mono font-medium rounded-none"
+                                                value={botName}
+                                                onChange={(e) => setBotName(e.target.value)}
+                                                placeholder="e.g. Maya Support" 
+                                                className="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 rounded-none px-4 py-4 focus:ring-0 focus:border-brand outline-none transition-all font-medium text-lg"
                                             />
                                         </div>
-                                    </div>
-                                    
-                                    <div className="relative flex items-center py-2">
-                                        <div className="flex-grow border-t border-slate-200"></div>
-                                        <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-wider">Or</span>
-                                        <div className="flex-grow border-t border-slate-200"></div>
-                                    </div>
 
-                                    <div className="flex justify-center">
-                                         <Button variant="outline" className="text-slate-600 border-slate-300 hover:bg-slate-50 hover:text-brand rounded-none w-full h-12">
-                                            <FileText className="mr-2 h-4 w-4" />
-                                            Upload Documents
-                                        </Button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {/* Step 3: Identity & Launch */}
-                        {currentStep === 2 && !isFinished && (
-                            <motion.div
-                                key="step3"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="h-full flex flex-col"
-                            >
-                                {isTraining ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                        <div className="relative w-24 h-24 mb-8">
-                                            <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
-                                            <div className="absolute inset-0 border-4 border-t-brand border-r-brand border-b-transparent border-l-transparent rounded-full animate-spin" />
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <Sparkles className="text-brand animate-pulse fill-brand" size={32} />
+                                        <div className="bg-brand-light/50 p-6 rounded-none border border-brand/20 flex gap-4 items-center">
+                                            <div className="w-12 h-12 bg-white rounded-none flex items-center justify-center shadow-sm text-brand border border-brand/10">
+                                                <User size={24} />
                                             </div>
-                                        </div>
-                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Training your AI...</h3>
-                                        <p className="text-slate-500 animate-pulse">Reading website content • Analyzing tone • Generating responses</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Name your Agent</h3>
-                                        <p className="text-slate-500 mb-8">Give your new AI employee a name.</p>
-                                        
-                                        <div className="max-w-md mx-auto w-full my-auto space-y-6">
                                             <div>
-                                                <label className="text-sm font-bold text-slate-700 mb-2 block uppercase tracking-wide">Agent Name</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={botName}
-                                                    onChange={(e) => setBotName(e.target.value)}
-                                                    placeholder="e.g. Maya Support" 
-                                                    className="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 rounded-none px-4 py-4 focus:ring-0 focus:border-brand outline-none transition-all font-medium text-lg"
-                                                />
-                                            </div>
-
-                                            <div className="bg-brand-light/50 p-6 rounded-none border border-brand/20 flex gap-4 items-center">
-                                                <div className="w-12 h-12 bg-white rounded-none flex items-center justify-center shadow-sm text-brand border border-brand/10">
-                                                    <User size={24} />
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-brand-dark">Preview</div>
-                                                    <div className="text-lg font-bold text-slate-900">{botName || "Agent Name"}</div>
-                                                    <div className="text-xs text-slate-500">{selectedRole ? ROLES.find(r => r.id === selectedRole)?.title : "Agent Role"}</div>
-                                                </div>
+                                                <div className="text-sm font-bold text-brand-dark">Preview</div>
+                                                <div className="text-lg font-bold text-slate-900">{botName || "Agent Name"}</div>
+                                                <div className="text-xs text-slate-500">{selectedRole ? ROLES.find(r => r.id === selectedRole)?.title : "Agent Role"}</div>
                                             </div>
                                         </div>
-                                    </>
-                                )}
-                            </motion.div>
-                        )}
-                        
-                        {/* Final Success Screen */}
-                        {isFinished && (
-                             <motion.div
-                                key="success"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="h-full flex flex-col items-center justify-center text-center py-8"
-                            >
-                                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600 shadow-xl shadow-green-100/50">
-                                    <CheckCircle2 size={48} />
+                                    </div>
                                 </div>
-                                <h3 className="text-3xl font-bold text-slate-900 mb-4">Pixi is Ready!</h3>
-                                <p className="text-slate-600 max-w-sm mx-auto mb-8 text-lg">
-                                    Your custom agent <strong>{botName}</strong> has been trained on <strong>{url || "your data"}</strong> and is ready.
-                                </p>
-                                <div className="flex gap-4">
-                                     <Button 
-                                        size="lg" 
-                                        onClick={() => setShowTestChat(true)}
-                                        className="bg-brand hover:bg-brand-dark shadow-xl shadow-brand/20 rounded-none h-12 px-8"
-                                    >
-                                        Test Agent Now
-                                        <ArrowRight size={18} className="ml-2" />
-                                    </Button>
-                                    <Button size="lg" variant="outline" className="rounded-none h-12 px-8">Embed Code</Button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                    </AnimatePresence>
+                            )}
+                        </div>
+                    )}
+                    
+                    {/* Final Success Screen */}
+                    {isFinished && (
+                            <div className="h-full flex flex-col items-center justify-center text-center py-8">
+                            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600 shadow-xl shadow-green-100/50">
+                                <CheckCircle2 size={48} />
+                            </div>
+                            <h3 className="text-3xl font-bold text-slate-900 mb-4">Pixi is Ready!</h3>
+                            <p className="text-slate-600 max-w-sm mx-auto mb-8 text-lg">
+                                Your custom agent <strong>{botName}</strong> has been trained on <strong>{url || "your data"}</strong> and is ready.
+                            </p>
+                            <div className="flex gap-4">
+                                    <Button 
+                                    size="lg" 
+                                    onClick={() => setShowTestChat(true)}
+                                    className="bg-brand hover:bg-brand-dark shadow-xl shadow-brand/20 rounded-none h-12 px-8"
+                                >
+                                    Test Agent Now
+                                    <ArrowRight size={18} className="ml-2" />
+                                </Button>
+                                <Button size="lg" variant="outline" className="rounded-none h-12 px-8">Embed Code</Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer Controls */}

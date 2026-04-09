@@ -23,21 +23,13 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email: email.toLowerCase(),
         password,
-        redirect: false,
         callbackUrl,
       });
-
-      if (result?.error) {
-        setError("Invalid email or password");
-      } else {
-        router.push(callbackUrl);
-        router.refresh();
-      }
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("Invalid email or password");
     } finally {
       setLoading(false);
     }

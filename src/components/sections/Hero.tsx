@@ -34,15 +34,15 @@ export function Hero() {
             Deploy autonomous AI agents that qualify leads, book meetings, and solve tickets 24/7.
           </p>
 
-          <div className="flex flex-row gap-3 w-fit mt-4">
-             <Link href="#demo">
-                <Button size="lg" className="h-14 px-8 text-lg bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all hover:scale-105 group shadow-lg shadow-slate-900/20">
+          <div className="flex flex-wrap gap-4 mt-4">
+             <Link href="#demo" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition-all hover:scale-105 group shadow-lg shadow-slate-900/20">
                     Start Demo
                     <ArrowRight className="w-5 h-5 ml-3 transition-transform group-hover:translate-x-1" />
                 </Button>
             </Link>
-            <Link href="/signup">
-                 <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-2 border-slate-200 text-slate-900 hover:bg-slate-50 rounded-xl font-bold hover:border-slate-300">
+            <Link href="/signup" className="w-full sm:w-auto">
+                 <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-lg border-2 border-slate-200 text-slate-900 hover:bg-slate-50 rounded-xl font-bold hover:border-slate-300">
                     View Pricing
                 </Button>
             </Link>

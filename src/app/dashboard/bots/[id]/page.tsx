@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Loader2, CheckCircle2, Copy } from "lucide-react";
+import { Loader2, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import Script from "next/script";
 import { TestWidgetLauncher } from "@/components/dashboard/TestWidgetLauncher";
+import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 
 declare global {
   interface Window {
@@ -44,6 +45,9 @@ export default function BotSettingsPage() {
   const [notificationPhone, setNotificationPhone] = useState("");
   const [whatsAppOptIn, setWhatsAppOptIn] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     fetch(`/api/bots/${id}`)
@@ -137,6 +141,29 @@ export default function BotSettingsPage() {
       } finally {
           setProcessingPayment(false);
       }
+  };
+    
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+        const res = await fetch(`/api/bots/${id}`, {
+            method: "DELETE"
+        });
+        const data = await res.json();
+        if (data.success) {
+            toast.success("Bot deleted successfully");
+            router.push("/dashboard");
+        } else {
+            toast.error(data.error || "Failed to delete bot");
+            setIsDeleteModalOpen(false);
+        }
+    } catch (err) {
+        console.error(err);
+        toast.error("Something went wrong while deleting");
+        setIsDeleteModalOpen(false);
+    } finally {
+        setIsDeleting(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand" /></div>;
@@ -305,6 +332,40 @@ export default function BotSettingsPage() {
         )}
 
         {bot.isActive && <TestWidgetLauncher botId={id} />}
+
+        {/* Danger Zone */}
+        <div className="mt-12 pt-8 border-t border-red-100">
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-8">
+                <div className="flex items-start gap-4">
+                    <div className="p-3 bg-red-100 text-red-600 rounded-xl">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-red-900 text-lg mb-1">Danger Zone</h3>
+                        <p className="text-red-700/70 text-sm mb-6">
+                            Once you delete a bot, there is no going back. All leads, transcripts, and payment information associated with this agent will be permanently removed.
+                        </p>
+                        <Button 
+                            variant="destructive" 
+                            onClick={() => setIsDeleteModalOpen(true)}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 shadow-lg shadow-red-200"
+                        >
+                            <Trash2 size={18} className="mr-2" />
+                            Delete this Agent
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <DeleteConfirmModal 
+            isOpen={isDeleteModalOpen}
+            onClose={() => setIsDeleteModalOpen(false)}
+            onConfirm={handleDelete}
+            isDeleting={isDeleting}
+            title="Delete this agent?"
+            description="Are you absolutely sure? This will permanently delete this bot and all its associated leads, chat transcripts, and payment information. This action cannot be undone."
+        />
     </div>
   );
 }
