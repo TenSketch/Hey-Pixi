@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Loader2, CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import Script from "next/script";
 import { TestWidgetLauncher } from "@/components/dashboard/TestWidgetLauncher";
@@ -166,7 +167,39 @@ export default function BotSettingsPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-brand" /></div>;
+  if (loading) {
+    return (
+      <div className="max-w-4xl space-y-8 pb-20">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="h-8 w-32 rounded-full" />
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-6">
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-60" />
+            </div>
+            <Skeleton className="h-10 w-32 rounded-lg" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+        </div>
+      </div>
+    );
+  }
   if (!bot) return <div>Bot not found</div>;
 
   return (
