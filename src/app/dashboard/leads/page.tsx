@@ -24,10 +24,21 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const query: Record<string, unknown> = { botId: { $in: botIds } };
   
   if (filterParam.botId) {
-      query.botId = filterParam.botId;
+      // SECURITY: Verify the requested botId belongs to the current user
+      const isOwned = botIds.some(id => id.toString() === filterParam.botId);
+      if (isOwned) {
+          query.botId = filterParam.botId;
+      } else {
+          // If not owned, we don't return an error to avoid enumeration, 
+          // we just fallback to the default "all owned bots" filter.
+          console.warn(`Blocked unauthorized access attempt by user ${dbUser._id} to bot ${filterParam.botId}`);
+      }
   }
 
-  const leads = await Lead.find(query).sort({ createdAt: -1 }).populate('botId', 'name').lean();
+  const leads = await Lead.find(query)
+    .sort({ createdAt: -1 })
+    .populate({ path: 'botId', model: BotConfig, select: 'name' })
+    .lean();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const serializedLeads = (leads as any[]).map(lead => ({

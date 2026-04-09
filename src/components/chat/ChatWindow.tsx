@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Bot, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 
 export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: string, botName: string, themeColor?: string }) {
     const [messages, setMessages] = useState([{ id: 1, text: `Hello! I am ${botName}. How can I help you today?`, sender: 'bot' }]);
@@ -18,7 +19,8 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
 
     const handleSend = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!input.trim()) return;
+        // Prevent sending if loading or input is empty
+        if (isLoading || !input.trim()) return;
 
         const userMsg = { id: Date.now(), text: input, sender: 'user' };
         setMessages(prev => [...prev, userMsg]);
@@ -32,16 +34,26 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
             const res = await fetch(apiUrl, {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     message: userMsg.text,
                     botId,
                     history
                 })
             });
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Connection error.");
+            }
+
             const data = await res.json();
             setMessages(prev => [...prev, { id: Date.now() + 1, text: data.result, sender: 'bot' }]);
-        } catch {
-            setMessages(prev => [...prev, { id: Date.now() + 1, text: "Connection error.", sender: 'bot' }]);
+        } catch (error: any) {
+            console.error("Chat Error:", error);
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: error.message || "Connection error.", sender: 'bot' }]);
         } finally {
             setIsLoading(false);
         }
@@ -80,7 +92,8 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                                 "prose prose-sm max-w-none",
                                 m.sender === 'user' ? "prose-invert" : "prose-slate"
                             )}>
-                                <ReactMarkdown>{m.text}</ReactMarkdown>
+                                {/* SECURITY: Using rehype-sanitize to prevent XSS from AI prompt injection */}
+                                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{m.text}</ReactMarkdown>
                             </div>
                         </div>
                     </div>
@@ -101,8 +114,9 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                 <input 
                     value={input}
                     onChange={e => setInput(e.target.value)}
-                    placeholder="Type your message..."
-                    className="flex-1 bg-slate-100 border-none px-4 py-2.5 text-sm focus:outline-none focus:ring-1 transition-colors rounded-full"
+                    placeholder={isLoading ? "Please wait..." : "Type your message..."}
+                    disabled={isLoading}
+                    className="flex-1 bg-slate-100 border-none px-4 py-2.5 text-sm focus:outline-none focus:ring-1 transition-colors rounded-full disabled:opacity-50"
                     style={{ '--tw-ring-color': themeColor } as React.CSSProperties}
                 />
                 <Button 
@@ -110,7 +124,7 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                     size="icon" 
                     className="rounded-full shadow-sm text-white shrink-0" 
                     style={{ backgroundColor: themeColor }}
-                    disabled={isLoading}
+                    disabled={isLoading || !input.trim()}
                 >
                     <Send size={16} />
                 </Button>

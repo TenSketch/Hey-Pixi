@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import dbConnect from "@/lib/mongodb";
 import { BotConfig, User } from "@/models";
 import { revalidatePath } from "next/cache";
+import { UnauthorizedError, BadRequestError, NotFoundError } from "@/lib/errors";
 
 export async function createBot(data: {
     name: string;
@@ -14,13 +15,18 @@ export async function createBot(data: {
     try {
         const session = await auth();
         if (!session?.user?.email) {
-            throw new Error("Unauthorized");
+            throw new UnauthorizedError();
         }
 
         const { name, role, url, systemPrompt } = data;
 
         if (!name || !role || !systemPrompt) {
-            throw new Error("Missing required fields");
+            throw new BadRequestError("Missing required fields");
+        }
+
+        // EDGE CASE: Prevent prompt bloat
+        if (systemPrompt.length > 4000) {
+            throw new BadRequestError("System prompt is too long (max 4000 characters)");
         }
 
         await dbConnect();
@@ -35,19 +41,22 @@ export async function createBot(data: {
 
         const newBot = await BotConfig.create({
             userId: dbUser._id,
-            name,
-            role,
-            url: url || "",
-            systemPrompt,
+            name: name.trim(),
+            role: role.trim(),
+            url: url?.trim() || "",
+            systemPrompt: systemPrompt.trim(),
             isActive: false,
         });
 
         revalidatePath("/dashboard");
         return { success: true, botId: newBot._id.toString() };
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Server Action Error (createBot):", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return { success: false, error: message };
+        return { 
+            success: false, 
+            error: error.message || "Unknown error",
+            statusCode: error.statusCode || 500
+        };
     }
 }
 
@@ -55,26 +64,28 @@ export async function deleteBot(botId: string) {
     try {
         const session = await auth();
         if (!session?.user?.email) {
-            throw new Error("Unauthorized");
+            throw new UnauthorizedError();
         }
 
         await dbConnect();
         
-        // Ensure user owns the bot
         const dbUser = await User.findOne({ email: session.user.email });
-        if (!dbUser) throw new Error("User not found");
+        if (!dbUser) throw new NotFoundError("User not found");
 
         const result = await BotConfig.deleteOne({ _id: botId, userId: dbUser._id });
         
         if (result.deletedCount === 0) {
-            throw new Error("Bot not found or unauthorized");
+            throw new NotFoundError("Bot not found or unauthorized");
         }
 
         revalidatePath("/dashboard");
         return { success: true };
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Server Action Error (deleteBot):", error);
-        const message = error instanceof Error ? error.message : "Unknown error";
-        return { success: false, error: message };
+        return { 
+            success: false, 
+            error: error.message || "Unknown error",
+            statusCode: error.statusCode || 500
+        };
     }
 }

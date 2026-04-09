@@ -2,17 +2,39 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import { User } from "@/models";
 import bcrypt from "bcryptjs";
+import { rateLimit } from "@/lib/rate-limit";
+
+// Rate limiter for registration: 5 requests per hour per IP
+const limiter = rateLimit({
+  interval: 60 * 60 * 1000, 
+  uniqueTokenPerInterval: 500, 
+});
 
 export async function POST(req: Request) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+    const { isRateLimited, headers } = limiter.check(5, ip);
+
+    if (isRateLimited) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again in an hour." },
+        { status: 429, headers }
+      );
+    }
+
     const { name, email, password } = await req.json();
 
     if (!name || !email || !password) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    // Strengthened Password Policy: Min 8 chars, must contain a number
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400, headers });
+    }
+
+    if (!/\d/.test(password)) {
+      return NextResponse.json({ error: "Password must contain at least one number" }, { status: 400, headers });
     }
 
     await dbConnect();
@@ -20,7 +42,7 @@ export async function POST(req: Request) {
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 400 });
+      return NextResponse.json({ error: "Email already registered" }, { status: 400, headers });
     }
 
     // Hash the password
@@ -28,8 +50,8 @@ export async function POST(req: Request) {
 
     // Create the user
     const newUser = await User.create({
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       password: hashedPassword,
     });
 
@@ -37,7 +59,7 @@ export async function POST(req: Request) {
       success: true, 
       message: "User registered successfully",
       userId: newUser._id 
-    });
+    }, { headers });
 
   } catch (error: unknown) {
     console.error("Registration Error:", error);
