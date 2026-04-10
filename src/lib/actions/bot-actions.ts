@@ -50,12 +50,16 @@ export async function createBot(data: {
 
         revalidatePath("/dashboard");
         return { success: true, botId: newBot._id.toString() };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Server Action Error (createBot):", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const statusCode = (error && typeof error === 'object' && 'statusCode' in error) 
+            ? (error as { statusCode: number }).statusCode 
+            : 500;
         return { 
             success: false, 
-            error: error.message || "Unknown error",
-            statusCode: error.statusCode || 500
+            error: errorMessage,
+            statusCode
         };
     }
 }
@@ -80,12 +84,16 @@ export async function deleteBot(botId: string) {
 
         revalidatePath("/dashboard");
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Server Action Error (deleteBot):", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const statusCode = (error && typeof error === 'object' && 'statusCode' in error) 
+            ? (error as { statusCode: number }).statusCode 
+            : 500;
         return { 
             success: false, 
-            error: error.message || "Unknown error",
-            statusCode: error.statusCode || 500
+            error: errorMessage,
+            statusCode
         };
     }
 }

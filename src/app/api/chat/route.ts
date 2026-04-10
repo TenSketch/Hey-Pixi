@@ -29,10 +29,15 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
 
+        // SECURITY: Limit input length to prevent token bloat/abuse
+        if (message.length > 2000) {
+            return NextResponse.json({ error: "Message is too long (max 2000 characters)" }, { status: 400 });
+        }
+
         const result = await ChatService.generateResponse(message, botId, history);
 
         return NextResponse.json({ result }, { headers });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("API Error (Chat):", error);
         
         const statusCode = error instanceof AppError ? error.statusCode : 500;

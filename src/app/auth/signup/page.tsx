@@ -5,10 +5,8 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { Bot, Mail, Lock, ArrowRight, User as UserIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function SignUpPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

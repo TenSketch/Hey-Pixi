@@ -57,7 +57,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     // Build update object dynamically to avoid overwriting with undefined
-    const updateData: any = {};
+    const updateData: {
+      systemPrompt?: string;
+      name?: string;
+      role?: string;
+      notificationPhone?: string;
+      whatsAppOptIn?: boolean;
+    } = {};
     if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
     if (name !== undefined) updateData.name = name;
     if (role !== undefined) updateData.role = role;

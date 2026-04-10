@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { CheckCircle2, Copy, Trash2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Copy, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import Script from "next/script";

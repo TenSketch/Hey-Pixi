@@ -61,9 +61,14 @@ View all leads in your dashboard: ${process.env.NEXTAUTH_URL || 'https://hey-pix
         const response = await axios(config);
         console.log('WhatsApp notification sent successfully:', response.data);
         return { success: true, data: response.data };
-    } catch (error: any) {
-        console.error('Error sending WhatsApp message:', error.response ? error.response.data : error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+            console.error('Error sending WhatsApp message:', error.response ? error.response.data : error.message);
+        } else {
+            console.error('Error sending WhatsApp message:', error);
+        }
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: errorMessage };
     }
 };
 
@@ -97,8 +102,13 @@ export const registerWhatsAppOptIn = async (phoneNumber: string) => {
         });
         console.log('WhatsApp opt-in registered successfully:', response.data);
         return { success: true, data: response.data };
-    } catch (error: any) {
-        console.error('Error registering WhatsApp opt-in:', error.response ? error.response.data : error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+            console.error('Error registering WhatsApp opt-in:', error.response ? error.response.data : error.message);
+        } else {
+            console.error('Error registering WhatsApp opt-in:', error);
+        }
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: errorMessage };
     }
 };

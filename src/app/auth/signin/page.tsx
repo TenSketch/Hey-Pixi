@@ -5,10 +5,9 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { Bot, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   

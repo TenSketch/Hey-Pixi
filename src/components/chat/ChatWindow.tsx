@@ -51,9 +51,10 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
 
             const data = await res.json();
             setMessages(prev => [...prev, { id: Date.now() + 1, text: data.result, sender: 'bot' }]);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Chat Error:", error);
-            setMessages(prev => [...prev, { id: Date.now() + 1, text: error.message || "Connection error.", sender: 'bot' }]);
+            const errorMessage = error instanceof Error ? error.message : "Connection error.";
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: errorMessage, sender: 'bot' }]);
         } finally {
             setIsLoading(false);
         }

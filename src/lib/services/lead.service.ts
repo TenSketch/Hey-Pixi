@@ -4,6 +4,8 @@ import dbConnect from "@/lib/mongodb";
 import mongoose from "mongoose";
 import { BadRequestError } from "@/lib/errors";
 
+import { ChatHistoryItem } from "./chat.service";
+
 export class LeadService {
   static async captureLead(data: {
     botId: mongoose.Types.ObjectId;
@@ -11,8 +13,8 @@ export class LeadService {
     phone?: string;
     email?: string;
     lastMessage: string;
-    history: any[];
-    botSnapshot: any;
+    history: ChatHistoryItem[];
+    botSnapshot: { name: string; notificationPhone?: string; whatsAppOptIn?: boolean };
   }) {
     // Basic validation
     if (!data.name) {
