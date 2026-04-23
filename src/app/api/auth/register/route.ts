@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import { User } from "@/models";
 import bcrypt from "bcryptjs";
 import { rateLimit } from "@/lib/rate-limit";
+import { VALIDATION, LIMITS } from "@/lib/constants";
 
 // Rate limiter for registration: 5 requests per hour per IP
 const limiter = rateLimit({
@@ -28,9 +29,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers });
     }
 
+    // Validate email format
+    if (typeof email !== "string" || !VALIDATION.EMAIL_REGEX.test(email)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400, headers });
+    }
+
+    // Validate name length
+    if (typeof name !== "string" || name.trim().length === 0 || name.trim().length > LIMITS.MAX_NAME_LENGTH) {
+      return NextResponse.json({ error: `Name must be between 1 and ${LIMITS.MAX_NAME_LENGTH} characters` }, { status: 400, headers });
+    }
+
     // Strengthened Password Policy: Min 8 chars, must contain a number
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400, headers });
+    if (typeof password !== "string" || password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+      return NextResponse.json({ error: `Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters` }, { status: 400, headers });
     }
 
     if (!/\d/.test(password)) {
@@ -50,7 +61,7 @@ export async function POST(req: Request) {
 
     // Create the user
     const newUser = await User.create({
-      name: name.trim(),
+      name: name.trim().substring(0, LIMITS.MAX_NAME_LENGTH),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
     });

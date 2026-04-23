@@ -20,11 +20,13 @@ const PaymentSchema = new Schema<IPayment>(
     amount: { type: Number, required: true },
     currency: { type: String, required: true },
     razorpayOrderId: { type: String, required: true },
-    razorpayPaymentId: { type: String, required: true },
+    razorpayPaymentId: { type: String, required: true, unique: true },
     razorpaySignature: { type: String, required: true },
     status: { type: String, enum: ["successful", "failed", "pending"], default: "pending" },
   },
   { timestamps: true }
 );
+
+PaymentSchema.index({ userId: 1, createdAt: -1 });
 
 export const Payment: Model<IPayment> = mongoose.models.Payment || mongoose.model<IPayment>("Payment", PaymentSchema);

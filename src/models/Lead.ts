@@ -26,4 +26,6 @@ const LeadSchema = new Schema<ILead>(
   { timestamps: true }
 );
 
+LeadSchema.index({ botId: 1, createdAt: -1 });
+
 export const Lead: Model<ILead> = mongoose.models.Lead || mongoose.model<ILead>("Lead", LeadSchema);

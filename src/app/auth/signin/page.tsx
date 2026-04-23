@@ -22,13 +22,20 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      await signIn("credentials", {
+      const result = await signIn("credentials", {
         email: email.toLowerCase(),
         password,
-        callbackUrl,
+        redirect: false,
       });
+
+      if (result?.error) {
+        setError("Invalid email or password");
+      } else {
+        // Successful login — redirect manually
+        window.location.href = callbackUrl;
+      }
     } catch {
-      setError("Invalid email or password");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

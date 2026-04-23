@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { auth } from "@/auth";
 import { ChatService } from "@/lib/services/chat.service";
 import { AppError } from "@/lib/errors";
+import { LIMITS } from "@/lib/constants";
 
 const limiter = rateLimit({
     interval: 60 * 1000, 
@@ -25,16 +26,33 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { message, botId, history = [] } = body;
 
-        if (!message) {
+        if (!message || typeof message !== "string") {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
 
         // SECURITY: Limit input length to prevent token bloat/abuse
-        if (message.length > 2000) {
-            return NextResponse.json({ error: "Message is too long (max 2000 characters)" }, { status: 400 });
+        if (message.length > LIMITS.MAX_CHAT_MESSAGE_LENGTH) {
+            return NextResponse.json({ error: `Message is too long (max ${LIMITS.MAX_CHAT_MESSAGE_LENGTH} characters)` }, { status: 400 });
         }
 
-        const result = await ChatService.generateResponse(message, botId, history);
+        // SECURITY: Validate and sanitize history array
+        if (!Array.isArray(history)) {
+            return NextResponse.json({ error: "History must be an array" }, { status: 400 });
+        }
+
+        const sanitizedHistory = history
+            .slice(0, LIMITS.MAX_CHAT_HISTORY_ITEMS)
+            .filter((h: unknown): h is { text: string; sender: string } => 
+                h !== null && typeof h === 'object' && 
+                'text' in h && typeof (h as Record<string, unknown>).text === 'string' &&
+                'sender' in h && typeof (h as Record<string, unknown>).sender === 'string'
+            )
+            .map((h) => ({
+                text: String(h.text).substring(0, LIMITS.MAX_CHAT_MESSAGE_LENGTH),
+                sender: (h.sender === 'user' ? 'user' : 'bot') as 'user' | 'bot'
+            }));
+
+        const result = await ChatService.generateResponse(message, botId, sanitizedHistory);
 
         return NextResponse.json({ result }, { headers });
     } catch (error: unknown) {

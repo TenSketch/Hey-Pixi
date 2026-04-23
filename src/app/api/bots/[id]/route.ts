@@ -4,11 +4,6 @@ import dbConnect from "@/lib/mongodb";
 import { BotConfig, User, Lead, Payment } from "@/models";
 import mongoose from "mongoose";
 
-// Force refresh the model in development to ensure schema changes are picked up
-if (process.env.NODE_ENV === "development") {
-  delete mongoose.models.BotConfig;
-}
-
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
@@ -18,6 +13,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const { id } = await params;
 
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid bot ID" }, { status: 400 });
+    }
+
     await dbConnect();
     const dbUser = await User.findOne({ email: session.user.email });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -25,7 +25,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const bot = await BotConfig.findOne({ _id: id, userId: dbUser._id });
     if (!bot) return NextResponse.json({ error: "Bot not found" }, { status: 404 });
 
-    console.log("DEBUG [GET] Fetching bot:", { id, whatsAppOptIn: bot.whatsAppOptIn });
     return NextResponse.json({ bot });
   } catch (error: unknown) {
     console.error("Failed to fetch bot:", error);
@@ -33,6 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
@@ -41,6 +41,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const { id } = await params;
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid bot ID" }, { status: 400 });
+    }
+
     const body = await req.json();
     const { systemPrompt, name, role, notificationPhone, whatsAppOptIn } = body;
 
@@ -50,6 +56,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         { error: "You must agree to the WhatsApp notifications policy to enable lead alerts." },
         { status: 400 }
       );
+    }
+
+    // Validate system prompt length
+    if (systemPrompt !== undefined && typeof systemPrompt === "string" && systemPrompt.length > 4000) {
+      return NextResponse.json({ error: "System prompt is too long (max 4000 characters)" }, { status: 400 });
     }
 
     await dbConnect();
@@ -78,8 +89,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (!bot) return NextResponse.json({ error: "Bot not found" }, { status: 404 });
 
-    console.log("DEBUG [PATCH] Updated bot result:", { id, whatsAppOptIn: bot.whatsAppOptIn });
-
     return NextResponse.json({ bot, success: true });
   } catch (error: unknown) {
     console.error("Failed to update bot:", error);
@@ -97,6 +106,11 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const { id } = await params;
 
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid bot ID" }, { status: 400 });
+    }
+
     await dbConnect();
     const dbUser = await User.findOne({ email: session.user.email });
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -105,12 +119,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const bot = await BotConfig.findOne({ _id: id, userId: dbUser._id });
     if (!bot) return NextResponse.json({ error: "Bot not found" }, { status: 404 });
 
-    // Cascading deletion
-    await Promise.all([
-      BotConfig.deleteOne({ _id: id }),
-      Lead.deleteMany({ botId: id }),
-      Payment.deleteMany({ botId: id }),
-    ]);
+    // Cascading deletion — delete related data first, then the bot
+    await Lead.deleteMany({ botId: id });
+    await Payment.deleteMany({ botId: id });
+    await BotConfig.deleteOne({ _id: id });
 
     return NextResponse.json({ success: true, message: "Bot and all associated data deleted successfully" });
   } catch (error: unknown) {

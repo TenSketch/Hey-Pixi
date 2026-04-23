@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import { BotConfig } from "@/models";
 import { ChatWindow } from "@/components/chat/ChatWindow";
@@ -5,6 +6,11 @@ import { notFound } from "next/navigation";
 
 export default async function WidgetPage({ params }: { params: Promise<{ botId: string }> }) {
   const { botId } = await params;
+
+  // Validate ObjectId format to prevent CastError / 500
+  if (!mongoose.Types.ObjectId.isValid(botId)) {
+      return notFound();
+  }
 
   await dbConnect();
   const bot = await BotConfig.findById(botId);

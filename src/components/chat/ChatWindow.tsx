@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_HISTORY_TO_SEND = 10;
+
 export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: string, botName: string, themeColor?: string }) {
     const [messages, setMessages] = useState([{ id: 1, text: `Hello! I am ${botName}. How can I help you today?`, sender: 'bot' }]);
     const [input, setInput] = useState("");
@@ -22,13 +25,13 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
         // Prevent sending if loading or input is empty
         if (isLoading || !input.trim()) return;
 
-        const userMsg = { id: Date.now(), text: input, sender: 'user' };
+        const userMsg = { id: Date.now(), text: input.trim(), sender: 'user' };
         setMessages(prev => [...prev, userMsg]);
         setInput("");
         setIsLoading(true);
 
-        // Filter messages to pass string history to backend
-        const history = messages.map(m => ({ text: m.text, sender: m.sender }));
+        // Send only the last N messages to limit payload size
+        const history = messages.slice(-MAX_HISTORY_TO_SEND).map(m => ({ text: m.text, sender: m.sender }));
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
@@ -115,6 +118,7 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                 <input 
                     value={input}
                     onChange={e => setInput(e.target.value)}
+                    maxLength={MAX_MESSAGE_LENGTH}
                     placeholder={isLoading ? "Please wait..." : "Type your message..."}
                     disabled={isLoading}
                     className="flex-1 bg-slate-100 border-none px-4 py-2.5 text-sm focus:outline-none focus:ring-1 transition-colors rounded-full disabled:opacity-50"

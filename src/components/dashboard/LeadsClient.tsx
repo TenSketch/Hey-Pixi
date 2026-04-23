@@ -78,7 +78,7 @@ export function LeadsClient({ initialLeads }: LeadsClientProps) {
             </div>
 
             {/* Right Side: Chat Transcript Viewer */}
-            <div className="xl:col-span-2 hidden xl:block">
+            <div className="xl:col-span-2">
                 {selectedLead ? (
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm h-full flex flex-col overflow-hidden max-h-[calc(100vh-250px)]">
                         {/* Header */}

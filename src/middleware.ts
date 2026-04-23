@@ -15,10 +15,11 @@ export default auth((req) => {
   
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline';
+    script-src 'self' 'unsafe-inline' https://checkout.razorpay.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' data: blob:;
     font-src 'self' https://fonts.gstatic.com;
+    connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
@@ -34,7 +35,7 @@ export default auth((req) => {
     response.headers.set('X-Frame-Options', 'DENY')
   } else {
     // Some older browsers might still need SAMEORIGIN or the header removed
-    // Since we want to allow framing on any site, we omit X-Frame-Options or use an ALLOW-FROM (obsolete)
+    // Since we want to allow framing on any site, we omit X-Frame-Options
     // Most modern browsers follow frame-ancestors.
     response.headers.delete('X-Frame-Options');
   }
@@ -48,7 +49,8 @@ export default auth((req) => {
 })
 
 export const config = {
+  // Include API routes in security headers, exclude only static assets
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

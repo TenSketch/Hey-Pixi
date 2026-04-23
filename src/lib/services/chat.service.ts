@@ -2,7 +2,8 @@ import Groq from "groq-sdk";
 import { BotConfig } from "@/models";
 import dbConnect from "@/lib/mongodb";
 import { LeadService } from "./lead.service";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, BadRequestError } from "@/lib/errors";
+import { VALIDATION } from "@/lib/constants";
 
 import mongoose from "mongoose";
 
@@ -32,6 +33,10 @@ export class ChatService {
 
     // Fetch custom bot from DB if botId provided
     if (botId && botId !== 'custom') {
+      // Validate ObjectId format
+      if (!mongoose.Types.ObjectId.isValid(botId)) {
+        throw new BadRequestError("Invalid bot ID format");
+      }
       await dbConnect();
       botSnapshot = await BotConfig.findById(botId);
       if (!botSnapshot) {
@@ -88,13 +93,8 @@ export class ChatService {
             const args = JSON.parse(toolCall.function.arguments);
             
             // SECURITY: Validate lead data before saving
-            // Basic email regex
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            // Basic phone regex (digits and optional + sign, 7-20 chars)
-            const phoneRegex = /^\+?[\d\s-]{7,20}$/;
-
-            const isEmailValid = args.email ? emailRegex.test(args.email) : true;
-            const isPhoneValid = args.phone ? phoneRegex.test(args.phone) : true;
+            const isEmailValid = args.email ? VALIDATION.EMAIL_REGEX.test(args.email) : true;
+            const isPhoneValid = args.phone ? VALIDATION.PHONE_REGEX.test(args.phone) : true;
 
             if (!isEmailValid || !isPhoneValid) {
                 text = "Thank you! I noticed the contact details provided might be in an incorrect format. Could you please provide a valid email or phone number? This helps our team reach you correctly!";

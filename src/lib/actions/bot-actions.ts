@@ -5,6 +5,7 @@ import dbConnect from "@/lib/mongodb";
 import { BotConfig, User } from "@/models";
 import { revalidatePath } from "next/cache";
 import { UnauthorizedError, BadRequestError, NotFoundError } from "@/lib/errors";
+import { LIMITS } from "@/lib/constants";
 
 export async function createBot(data: {
     name: string;
@@ -25,8 +26,8 @@ export async function createBot(data: {
         }
 
         // EDGE CASE: Prevent prompt bloat
-        if (systemPrompt.length > 4000) {
-            throw new BadRequestError("System prompt is too long (max 4000 characters)");
+        if (typeof systemPrompt !== "string" || systemPrompt.length > LIMITS.MAX_SYSTEM_PROMPT_LENGTH) {
+            throw new BadRequestError(`System prompt is too long (max ${LIMITS.MAX_SYSTEM_PROMPT_LENGTH} characters)`);
         }
 
         await dbConnect();
@@ -39,9 +40,15 @@ export async function createBot(data: {
             });
         }
 
+        // Enforce bot limit per user
+        const existingBotCount = await BotConfig.countDocuments({ userId: dbUser._id });
+        if (existingBotCount >= LIMITS.MAX_BOTS_PER_USER) {
+            throw new BadRequestError(`You've reached the maximum number of bots (${LIMITS.MAX_BOTS_PER_USER}).`);
+        }
+
         const newBot = await BotConfig.create({
             userId: dbUser._id,
-            name: name.trim(),
+            name: name.trim().substring(0, LIMITS.MAX_NAME_LENGTH),
             role: role.trim(),
             url: url?.trim() || "",
             systemPrompt: systemPrompt.trim(),

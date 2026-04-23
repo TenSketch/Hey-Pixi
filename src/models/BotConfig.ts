@@ -29,4 +29,6 @@ const BotConfigSchema = new Schema<IBotConfig>(
   { timestamps: true }
 );
 
+BotConfigSchema.index({ userId: 1, createdAt: -1 });
+
 export const BotConfig: Model<IBotConfig> = mongoose.models.BotConfig || mongoose.model<IBotConfig>("BotConfig", BotConfigSchema);

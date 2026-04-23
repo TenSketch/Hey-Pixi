@@ -3,6 +3,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import * as cheerio from "cheerio";
 import axios from "axios";
 import Groq from "groq-sdk";
+import { isSSRFTarget } from "@/lib/constants";
 
 const limiter = rateLimit({
     interval: 60 * 1000, 
@@ -26,13 +27,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing url or role" }, { status: 400 });
     }
 
+    // Validate URL format
+    if (typeof url !== "string" || url.length > 2048) {
+      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    }
+
     // 1. Scrape the website text
     let websiteContent = "No specific website content available. Rely on general knowledge.";
     
     try {
         // Enforce http/https
         const targetUrl = url.startsWith("http") ? url : `https://${url}`;
-        const response = await axios.get(targetUrl, { timeout: 8000 });
+
+        // SSRF Protection: block requests to private/internal networks
+        if (isSSRFTarget(targetUrl)) {
+            return NextResponse.json({ error: "URL points to a restricted network" }, { status: 400 });
+        }
+
+        const response = await axios.get(targetUrl, { 
+            timeout: 8000,
+            maxRedirects: 3,
+            // Don't follow redirects to internal IPs
+            validateStatus: (status) => status < 400,
+        });
+
+        // Check if redirect landed on a blocked IP
+        const finalUrl = response.request?.res?.responseUrl || targetUrl;
+        if (isSSRFTarget(finalUrl)) {
+            return NextResponse.json({ error: "URL redirected to a restricted network" }, { status: 400 });
+        }
+
         const html = response.data;
         const $ = cheerio.load(html);
         
@@ -57,11 +81,14 @@ export async function POST(req: Request) {
 
     const groq = new Groq({ apiKey });
 
+    const sanitizedBotName = (botName || 'Pixi').substring(0, 50);
+    const sanitizedRole = role.substring(0, 100);
+
     const promptGeneratorInstruction = `
     You are an expert AI system architect. Build a highly effective System Prompt for an autonomous AI Assistant.
     
-    Assistant Name: ${botName || 'Pixi'}
-    Role: ${role}
+    Assistant Name: ${sanitizedBotName}
+    Role: ${sanitizedRole}
     Source Data extracted from client's website: 
     """
     ${websiteContent}

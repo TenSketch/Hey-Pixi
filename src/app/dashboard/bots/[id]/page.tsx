@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Script from "next/script";
 import { TestWidgetLauncher } from "@/components/dashboard/TestWidgetLauncher";
 import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
+import { PRICING } from "@/lib/constants";
 
 declare global {
   interface Window {
@@ -226,7 +227,7 @@ export default function BotSettingsPage() {
             <div className="bg-brand-light/30 border border-brand/20 p-6 rounded-xl flex items-center justify-between">
                 <div>
                     <h3 className="font-bold text-slate-900 text-lg mb-1">Activate Your Agent</h3>
-                    <p className="text-slate-600">Pay a one-time setup fee of ₹1999 to start capturing leads on your website.</p>
+                    <p className="text-slate-600">Pay a one-time setup fee of ₹{PRICING.BOT_ACTIVATION_AMOUNT_INR} to start capturing leads on your website.</p>
                 </div>
                 <Button 
                     onClick={handlePayment} 
@@ -234,7 +235,7 @@ export default function BotSettingsPage() {
                     className="bg-brand hover:bg-brand-dark"
                 >
                     {processingPayment ? <Loader2 className="animate-spin mr-2" /> : null}
-                    Pay ₹1999
+                    Pay ₹{PRICING.BOT_ACTIVATION_AMOUNT_INR}
                 </Button>
             </div>
         )}
