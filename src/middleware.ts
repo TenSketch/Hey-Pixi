@@ -15,11 +15,12 @@ export default auth((req) => {
   
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline' https://checkout.razorpay.com;
+    script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' data: blob:;
+    img-src 'self' data: blob: https://cdn.razorpay.com;
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com;
+    frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';

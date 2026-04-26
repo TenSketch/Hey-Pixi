@@ -3,48 +3,79 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Bot, Globe, CheckCircle2, ChevronRight, Wand2, ShoppingCart, Headset, BarChart3, Loader2 } from "lucide-react";
+import { Bot, Globe, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createBot } from "@/lib/actions/bot-actions";
 
-const ROLES = [
-  { id: 'sales', title: 'Sales Agent', icon: ShoppingCart, desc: 'Recommend products & close deals.' },
-  { id: 'support', title: 'Customer Support', icon: Headset, desc: 'Solve tickets 24/7 instantly.' },
-  { id: 'lead', title: 'Lead Qualifier', icon: BarChart3, desc: 'Score and book meetings.' },
-  { id: 'custom', title: 'Custom Bot', icon: Wand2, desc: 'Build for any specific niche.' },
-];
-
 export default function CreateBotPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedRole] = useState("support");
   const [url, setUrl] = useState("");
   const [botName, setBotName] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState("");
+  const [loadingStatus, setLoadingStatus] = useState("");
 
   const handleNext = async () => {
-    if (currentStep === 1) {
-      // Step 2 -> 3: Analyze URL
+    if (currentStep === 0) {
+      // Step 1 -> 2: Analyze URL
       setIsAnalyzing(true);
+      setLoadingStatus("Connecting...");
+      let success = false;
       try {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url, role: selectedRole, botName: botName || "AI Assistant" }),
         });
-        const data = await res.json();
-        if (data.prompt) setGeneratedPrompt(data.prompt);
+        
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("No response stream");
+        
+        const decoder = new TextDecoder();
+        let done = false;
+
+        while (!done) {
+            const { value, done: readerDone } = await reader.read();
+            done = readerDone;
+            if (value) {
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            if (data.error) {
+                                toast.error(data.error);
+                                throw new Error(data.error);
+                            }
+                            if (data.status) {
+                                setLoadingStatus(data.status);
+                            }
+                            if (data.success) {
+                                setGeneratedPrompt(data.prompt);
+                                success = true;
+                            }
+                        } catch (e) {
+                            // ignore incomplete JSON
+                        }
+                    }
+                }
+            }
+        }
       } catch (err) {
         console.error("Failed to analyze", err);
       } finally {
         setIsAnalyzing(false);
-        setCurrentStep(2);
+        setLoadingStatus("");
+        if (success) setCurrentStep(1);
       }
-    } else if (currentStep === 2) {
+    } else if (currentStep === 1) {
       // Final Step: Save via Server Action
       setIsAnalyzing(true);
+      setLoadingStatus("Saving agent...");
       try {
         const result = await createBot({
             name: botName || "My Assistant",
@@ -64,6 +95,7 @@ export default function CreateBotPage() {
          console.error(err);
       } finally {
          setIsAnalyzing(false);
+         setLoadingStatus("");
       }
     } else {
       setCurrentStep(prev => prev + 1);
@@ -77,38 +109,8 @@ export default function CreateBotPage() {
         <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden flex flex-col min-h-[500px]">
             <div className="flex-1 p-8 md:p-12">
                 
-                {/* Step 1: Role */}
+                {/* Step 1: Data */}
                 {currentStep === 0 && (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-500 h-full flex flex-col">
-                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Select Agent Role</h3>
-                        <p className="text-slate-500 mb-8">What is the primary objective of this AI?</p>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {ROLES.map((role) => (
-                                <button
-                                    key={role.id}
-                                    onClick={() => setSelectedRole(role.id)}
-                                    className={cn(
-                                        "p-6 border-2 text-left rounded-xl transition-all",
-                                        selectedRole === role.id ? "border-brand bg-brand-light/30" : "border-slate-100 hover:border-slate-300"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "w-12 h-12 rounded-lg flex items-center justify-center mb-4 transition-colors",
-                                        selectedRole === role.id ? "bg-brand text-white" : "bg-slate-100 text-slate-500"
-                                    )}>
-                                        <role.icon size={24} />
-                                    </div>
-                                    <h4 className="font-bold text-slate-900 text-lg mb-1">{role.title}</h4>
-                                    <p className="text-sm text-slate-500">{role.desc}</p>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 2: Data */}
-                {currentStep === 1 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-500 h-full flex flex-col justify-center">
                         <h3 className="text-2xl font-bold text-slate-900 mb-2 text-center">Train Your Agent</h3>
                         <p className="text-slate-500 mb-8 text-center">Provide a website URL for the AI to learn your business.</p>
@@ -143,8 +145,8 @@ export default function CreateBotPage() {
                     </div>
                 )}
 
-                {/* Step 3: Review Prompts */}
-                {currentStep === 2 && (
+                {/* Step 2: Review Prompts */}
+                {currentStep === 1 && (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-500 h-full flex flex-col">
                          <h3 className="text-[28px] font-extrabold text-slate-900 mb-2">Review Instructions</h3>
                          <p className="text-slate-500 mb-8 font-medium">Here is the auto-generated system prompt based on your website.</p>
@@ -181,15 +183,15 @@ export default function CreateBotPage() {
                     Back
                 </Button>
                 <div className="flex items-center gap-6">
-                    <p className="text-slate-400 text-sm font-bold uppercase hidden sm:block tracking-wider">Step {currentStep + 1} of 3</p>
+                    <p className="text-slate-400 text-sm font-bold uppercase hidden sm:block tracking-wider">Step {currentStep + 1} of 2</p>
                     <Button 
                         onClick={handleNext}
-                        disabled={(currentStep === 0 && !selectedRole) || (currentStep === 1 && !url) || isAnalyzing}
+                        disabled={(currentStep === 0 && !url) || isAnalyzing}
                         className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold h-12 px-8 rounded-xl shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02]"
                     >
                         {isAnalyzing ? (
-                            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Working...</>
-                        ) : currentStep === 2 ? (
+                            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> {loadingStatus || "Working..."}</>
+                        ) : currentStep === 1 ? (
                             <><CheckCircle2 className="w-5 h-5 mr-2" /> Finish & Save</>
                         ) : (
                             <>Next Step <ChevronRight className="w-5 h-5 ml-1" /></>
