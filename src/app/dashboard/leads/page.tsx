@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import dbConnect from "@/lib/mongodb";
 import { BotConfig, Lead, User } from "@/models";
 import { MessageSquare } from "lucide-react";
-import { LeadsClient } from "@/components/dashboard/LeadsClient";
+import { LeadsTable } from "@/components/dashboard/LeadsTable";
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ botId?: string }> }) {
   const session = await auth();
@@ -58,13 +58,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   }));
 
   return (
-    <div className="max-w-6xl">
-        <div className="mb-8 flex justify-between items-end">
+    <div className="max-w-[1400px] mx-auto">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
                 <h2 className="text-2xl font-bold text-slate-900">Leads CRM</h2>
                 <p className="text-slate-500 mt-1">Review contact information captured by your AI agents.</p>
             </div>
-            <div className="text-sm font-semibold text-brand">
+            <div className="bg-brand-light/50 border border-brand/20 px-4 py-2 rounded-lg text-sm font-semibold text-brand-dark flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
                 Total Leads: {serializedLeads.length}
             </div>
         </div>
@@ -78,7 +79,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 <p className="text-slate-500">When your AI agents capture phone numbers or emails, they will appear here.</p>
             </div>
         ) : (
-            <LeadsClient initialLeads={serializedLeads} />
+            <LeadsTable data={serializedLeads} />
         )}
     </div>
   );

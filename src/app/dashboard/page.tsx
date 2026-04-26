@@ -1,18 +1,17 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import dbConnect from "@/lib/mongodb";
-import { BotConfig, User } from "@/models";
-import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { Bot, Plus, Settings } from "lucide-react";
+import { BotConfig, User, Lead } from "@/models";
+import { Bot, MessageSquare, TrendingUp, Users } from "lucide-react";
+import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default async function DashboardPage() {
+export default async function DashboardOverview() {
   const session = await auth();
   if (!session?.user) redirect("/api/auth/signin");
 
   await dbConnect();
 
-  // Ensure user exists in our DB (Safe fallback, usually handled at signup)
   let dbUser = await User.findOne({ email: session.user.email });
   if (!dbUser) {
     dbUser = await User.create({
@@ -21,75 +20,134 @@ export default async function DashboardPage() {
     });
   }
 
-  const bots = await BotConfig.find({ userId: dbUser._id }).sort({ createdAt: -1 });
+  const bots = await BotConfig.find({ userId: dbUser._id });
+  const activeBots = bots.filter(b => b.isActive).length;
+  const botIds = bots.map(b => b._id);
+
+  // 1. Total Stats
+  const totalLeads = await Lead.countDocuments({ botId: { $in: botIds } });
+  
+  // 2. Real Lead Data for the last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const dailyLeads = await Lead.aggregate([
+    { $match: { botId: { $in: botIds }, createdAt: { $gte: sevenDaysAgo } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+
+  // Fill in missing days with 0
+  const chartData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const match = dailyLeads.find(item => item._id === dateStr);
+    chartData.push({
+      name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      leads: match ? match.count : 0
+    });
+  }
+
+  // 3. Bot Performance Data
+  const botPerformance = await Lead.aggregate([
+    { $match: { botId: { $in: botIds } } },
+    {
+      $group: {
+        _id: "$botId",
+        leads: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const botPerformanceData = bots.map(bot => {
+    const perf = botPerformance.find(p => p._id.toString() === bot._id.toString());
+    return {
+      name: bot.name,
+      leads: perf ? perf.leads : 0
+    };
+  });
+
+  // Since we currently track conversations primarily when a lead is captured, 
+  // we'll set this to the total number of leads for now to be accurate to your data.
+  // In the future, this could track all anonymous sessions.
+  const totalConversations = totalLeads;
+  const conversionRate = totalConversations > 0 ? 100 : 0; // If every tracked conversation is a lead, it's 100%
 
   return (
-    <div className="max-w-5xl">
-       <div className="flex items-center justify-between mb-8">
-            <div>
-                <h2 className="text-2xl font-bold text-slate-900">Your AI Agents</h2>
-                <p className="text-slate-500 mt-1">Manage your deployed chatbots and deploy new ones.</p>
-            </div>
-            <Link href="/dashboard/bots/new">
-                <Button className="bg-brand hover:bg-brand-dark text-white rounded-lg shadow-sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Agent
-                </Button>
-            </Link>
+    <div className="max-w-[1400px] mx-auto space-y-8">
+       <div>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h2>
+            <p className="text-slate-500 mt-1">Here's what's happening with your AI agents today.</p>
        </div>
 
-       {bots.length === 0 ? (
-           <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
-                <div className="w-16 h-16 bg-brand-light text-brand rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Bot size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">No agents found</h3>
-                <p className="text-slate-500 mb-6 max-w-md mx-auto">You haven&apos;t created any AI agents yet. Start by creating a custom agent trained on your website data.</p>
-                <Link href="/dashboard/bots/new">
-                    <Button className="bg-brand hover:bg-brand-dark">Create Your First Agent</Button>
-                </Link>
-           </div>
-       ) : (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {bots.map((bot) => (
-                   <div key={bot._id.toString()} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow relative">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: bot.themeColor }}>
-                                    <Bot size={20} />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900">{bot.name}</h3>
-                                    <p className="text-xs text-slate-500 capitalize">{bot.role} Agent</p>
-                                </div>
-                            </div>
-                            <div className={`px-2 py-1 rounded text-xs font-semibold ${bot.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                                {bot.isActive ? 'Active' : 'Inactive'}
-                            </div>
-                        </div>
-                        <div className="text-sm text-slate-600 mb-6 line-clamp-2">
-                            Trained on: <span className="font-medium text-slate-900">{bot.url}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
-                             <Link href={`/dashboard/bots/${bot._id}`} className="flex-1">
-                                <Button variant="outline" className="w-full text-slate-600 hover:text-brand">
-                                    <Settings className="w-4 h-4 mr-2" />
-                                    Configure
-                                </Button>
-                            </Link>
-                            {bot.isActive && (
-                                <Link href={`/dashboard/leads?botId=${bot._id}`} className="flex-1">
-                                    <Button variant="ghost" className="w-full text-brand hover:bg-brand-light">
-                                        View Leads
-                                    </Button>
-                                </Link>
-                             )}
-                        </div>
-                   </div>
-               ))}
-           </div>
-       )}
+       {/* Top Stats Cards */}
+       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
+                    <Bot className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{bots.length}</div>
+                    <p className="text-xs text-slate-500 mt-1">
+                        <span className="text-brand font-medium">{activeBots}</span> active
+                    </p>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+                    <Users className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{totalLeads}</div>
+                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                        Captured from your bots
+                    </p>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Conversations</CardTitle>
+                    <MessageSquare className="h-4 w-4 text-slate-400" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{totalConversations}</div>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Total tracked interactions
+                    </p>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-brand text-white border-brand-dark">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-brand-light">Lead Conversion</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-brand-light" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{conversionRate}%</div>
+                    <p className="text-xs text-brand-light mt-1">
+                        Capture rate per conversation
+                    </p>
+                </CardContent>
+            </Card>
+       </div>
+
+       {/* Charts */}
+       <OverviewCharts 
+         leadData={chartData} 
+         botPerformanceData={botPerformanceData} 
+       />
     </div>
   );
 }
+

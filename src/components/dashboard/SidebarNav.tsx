@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Activity, BarChart3 } from "lucide-react";
+import { Activity, BarChart3, Bot } from "lucide-react";
 
 export function SidebarNav() {
   const pathname = usePathname();
 
   const navItems = [
     { href: "/dashboard", label: "Overview", icon: Activity, exact: true },
-    { href: "/dashboard/leads", label: "Leads CRM", icon: BarChart3 },
+    { href: "/dashboard/bots", label: "AI Agents", icon: Bot, exact: false },
+    { href: "/dashboard/leads", label: "Leads CRM", icon: BarChart3, exact: false },
   ];
 
   return (
@@ -20,7 +21,7 @@ export function SidebarNav() {
         // 1. If exact is true, path must match exactly (or be a sub-route of bots which is logically under overview)
         // 2. Otherwise, check if path starts with href
         const isActive = item.exact 
-            ? (pathname === item.href || pathname.startsWith("/dashboard/bots"))
+            ? pathname === item.href
             : pathname.startsWith(item.href);
 
         return (

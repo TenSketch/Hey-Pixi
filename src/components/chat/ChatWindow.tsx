@@ -6,6 +6,7 @@ import { Bot, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import { motion } from "framer-motion";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_TO_SEND = 10;
@@ -83,7 +84,13 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
                 {messages.map((m, i) => (
-                    <div key={i} className={cn("flex w-full", m.sender === 'user' ? "justify-end" : "justify-start")}>
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                        key={i} 
+                        className={cn("flex w-full", m.sender === 'user' ? "justify-end" : "justify-start")}
+                    >
                         <div className={cn(
                             "max-w-[85%] p-3 text-sm shadow-sm rounded-2xl",
                             m.sender === 'user' 
@@ -100,16 +107,20 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                                 <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{m.text}</ReactMarkdown>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
                 {isLoading && (
-                    <div className="flex w-full justify-start">
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex w-full justify-start"
+                    >
                          <div className="bg-white p-4 border border-slate-200 shadow-sm rounded-2xl rounded-bl-sm flex gap-1 items-center h-[42px]">
                              <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"/>
                              <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-75"/>
                              <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150"/>
                          </div>
-                    </div>
+                    </motion.div>
                 )}
             </div>
 

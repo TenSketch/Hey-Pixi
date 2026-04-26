@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bot, User } from "lucide-react";
 import { SignOutButton } from "@/components/dashboard/SignOutButton";
 import { SidebarNav } from "@/components/dashboard/SidebarNav";
+import { MobileNav } from "@/components/dashboard/MobileNav";
 
 export default async function DashboardLayout({
   children,
@@ -12,9 +13,9 @@ export default async function DashboardLayout({
   const session = await auth();
 
   return (
-    <div className="flex h-screen bg-slate-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
+    <div className="flex h-screen bg-[#F8FAFC]">
+      {/* Sidebar (Desktop Only) */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col z-10">
         <div className="h-16 flex items-center px-6 border-b border-slate-200">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="bg-brand text-white p-1.5 rounded-lg shadow-sm">
@@ -44,14 +45,17 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 justify-between">
+      <main className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0 relative z-0">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center px-8 justify-between sticky top-0 z-10">
             <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
         </header>
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-4 md:p-8">
           {children}
         </div>
       </main>
+
+      {/* Mobile Navigation */}
+      <MobileNav user={session?.user} />
     </div>
   );
 }
