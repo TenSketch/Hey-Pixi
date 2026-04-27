@@ -1,4 +1,5 @@
 "use client";
+"use no memo";
 
 import { useState } from "react";
 import {
@@ -16,10 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, ChevronDown, ChevronUp } from "lucide-react";
-import { exportToCSV } from "@/lib/utils";
-import { LeadDetailsSheet } from "./LeadDetailsSheet";
-
+import { Search, Download, ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
+import { exportToCSV, cn } from "@/lib/utils";
+import { LeadDetailsSheet, type LeadStatus } from "./LeadDetailsSheet";
 interface Lead {
   _id: string;
   name?: string;
@@ -27,7 +27,7 @@ interface Lead {
   email?: string;
   lastMessage: string;
   transcript: Array<{ text: string; sender: "user" | "bot" }>;
-  status: string;
+  status: LeadStatus;
   createdAt: string;
   botId?: { _id: string; name: string };
 }
@@ -110,10 +110,39 @@ export function LeadsTable({ data }: LeadsTableProps) {
       header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
+        const variants: Record<string, string> = {
+          new: "bg-blue-100 text-blue-700 border-blue-200",
+          contacted: "bg-amber-100 text-amber-700 border-amber-200",
+          qualified: "bg-indigo-100 text-indigo-700 border-indigo-200",
+          closed: "bg-emerald-100 text-emerald-700 border-emerald-200",
+          resolved: "bg-slate-100 text-slate-700 border-slate-200",
+        };
         return (
-          <Badge variant={status === "new" ? "default" : "secondary"} className="uppercase text-[10px]">
+          <Badge className={cn("uppercase text-[10px] font-bold border", variants[status] || "bg-slate-100")}>
             {status}
           </Badge>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Follow Up",
+      cell: ({ row }) => {
+        const phone = row.original.phone;
+        if (!phone) return null;
+        return (
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            className="h-8 w-8 p-0 text-brand hover:text-brand-dark hover:bg-brand/10"
+            onClick={(e) => {
+                e.stopPropagation();
+                const cleanPhone = phone.replace(/\D/g, "");
+                window.open(`https://wa.me/${cleanPhone}`, "_blank");
+            }}
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
         );
       },
     },
@@ -137,6 +166,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
     },
   ];
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

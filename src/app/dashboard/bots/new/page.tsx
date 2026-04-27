@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Bot, Globe, CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { createBot } from "@/lib/actions/bot-actions";
 
 export default function CreateBotPage() {
@@ -58,7 +57,7 @@ export default function CreateBotPage() {
                                 setGeneratedPrompt(data.prompt);
                                 success = true;
                             }
-                        } catch (e) {
+                        } catch {
                             // ignore incomplete JSON
                         }
                     }

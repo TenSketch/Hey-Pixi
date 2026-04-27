@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Activity, BarChart3, Bot } from "lucide-react";
 import { SignOutButton } from "./SignOutButton";
 
-export function MobileNav({ user }: { user: Record<string, unknown> | null | undefined }) {
+export function MobileNav() {
   const pathname = usePathname();
 
   const navItems = [

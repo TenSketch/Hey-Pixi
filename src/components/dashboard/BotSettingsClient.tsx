@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Loader2, CheckCircle2, Copy, Trash2 } from "lucide-react";
+import { Loader2, CheckCircle2, Copy, Trash2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import Script from "next/script";
 import { TestWidgetLauncher } from "@/components/dashboard/TestWidgetLauncher";
-import { deleteBot } from "@/lib/actions/bot-actions";
+import { deleteBot, updateBotSettings } from "@/lib/actions/bot-actions";
 import { useRouter } from "next/navigation";
 
 interface BotSettingsClientProps {
@@ -26,6 +26,27 @@ export function BotSettingsClient({ bot: initialBot, id, razorpayKey }: BotSetti
     const [bot, setBot] = useState(initialBot);
     const [processingPayment, setProcessingPayment] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+    const handleSaveSettings = async () => {
+        setIsSavingSettings(true);
+        try {
+            const result = await updateBotSettings(id, {
+                notificationPhone: bot.notificationPhone as string,
+                whatsAppOptIn: bot.whatsAppOptIn as boolean
+            });
+            if (result.success) {
+                toast.success("Notification settings updated!");
+            } else {
+                toast.error(result.error || "Failed to update settings");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("An error occurred while saving");
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
 
     const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return;
@@ -185,6 +206,48 @@ export function BotSettingsClient({ bot: initialBot, id, razorpayKey }: BotSetti
                     </div>
                 </div>
             )}
+
+            <div className="bg-white border border-slate-200 rounded-xl p-6">
+                <h3 className="font-bold text-slate-900 text-lg mb-4 flex items-center gap-2">
+                    <MessageCircle size={20} className="text-brand" />
+                    WhatsApp Lead Alerts
+                </h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Notification Phone Number</label>
+                        <input 
+                            type="text" 
+                            placeholder="+91 99999 99999"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-brand focus:outline-none transition-all"
+                            value={(bot.notificationPhone as string) || ""}
+                            onChange={(e) => setBot({ ...bot, notificationPhone: e.target.value })}
+                        />
+                        <p className="text-xs text-slate-500 mt-1.5">Enter the number where you want to receive lead alerts via WhatsApp.</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 bg-brand-light/30 rounded-xl border border-brand/10">
+                        <input 
+                            type="checkbox" 
+                            id="whatsapp-optin"
+                            className="w-4 h-4 text-brand rounded focus:ring-brand"
+                            checked={!!bot.whatsAppOptIn}
+                            onChange={(e) => setBot({ ...bot, whatsAppOptIn: e.target.checked })}
+                        />
+                        <label htmlFor="whatsapp-optin" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
+                            Enable real-time WhatsApp alerts for new leads
+                        </label>
+                    </div>
+
+                    <Button 
+                        className="bg-brand hover:bg-brand-dark"
+                        disabled={isSavingSettings}
+                        onClick={handleSaveSettings}
+                    >
+                        {isSavingSettings ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                        Save Notification Settings
+                    </Button>
+                </div>
+            </div>
 
             <div className="bg-white border border-slate-200 rounded-xl p-6">
                 <h3 className="font-bold text-slate-900 text-lg mb-4">System Prompt</h3>

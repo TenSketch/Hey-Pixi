@@ -55,7 +55,7 @@ export default async function DashboardLayout({
       </main>
 
       {/* Mobile Navigation */}
-      <MobileNav user={session?.user} />
+      <MobileNav />
     </div>
   );
 }

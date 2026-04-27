@@ -43,7 +43,7 @@ export default async function BotsPage() {
                     <Bot size={32} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">No agents found</h3>
-                <p className="text-slate-500 mb-6 max-w-md mx-auto">You haven't created any AI agents yet. Start by creating a custom agent trained on your website data.</p>
+                <p className="text-slate-500 mb-6 max-w-md mx-auto">You haven&apos;t created any AI agents yet. Start by creating a custom agent trained on your website data.</p>
                 <Link href="/dashboard/bots/new">
                     <Button className="bg-brand hover:bg-brand-dark">Create Your First Agent</Button>
                 </Link>

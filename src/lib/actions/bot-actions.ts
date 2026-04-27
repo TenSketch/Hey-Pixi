@@ -104,3 +104,38 @@ export async function deleteBot(botId: string) {
         };
     }
 }
+
+export async function updateBotSettings(botId: string, data: {
+    notificationPhone?: string;
+    whatsAppOptIn?: boolean;
+}) {
+    try {
+        const session = await auth();
+        if (!session?.user?.email) {
+            throw new UnauthorizedError();
+        }
+
+        await dbConnect();
+        
+        const dbUser = await User.findOne({ email: session.user.email });
+        if (!dbUser) throw new NotFoundError("User not found");
+
+        const bot = await BotConfig.findOneAndUpdate(
+            { _id: botId, userId: dbUser._id },
+            { $set: data },
+            { new: true }
+        );
+
+        if (!bot) {
+            throw new NotFoundError("Bot not found or unauthorized");
+        }
+
+        revalidatePath(`/dashboard/bots/${botId}`);
+        return { success: true, bot: JSON.parse(JSON.stringify(bot)) };
+    } catch (error: unknown) {
+        console.error("Server Action Error (updateBotSettings):", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        return { success: false, error: errorMessage };
+    }
+}
+

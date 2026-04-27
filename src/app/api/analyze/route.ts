@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import Groq from "groq-sdk";
 
@@ -77,7 +76,7 @@ function extractInternalLinks(linksObj: Record<string, string> | undefined, base
                     fallbackLinks.push(normalizedLink);
                 }
             }
-        } catch (e) {
+        } catch {
             // Ignore invalid URLs
         }
     }
@@ -92,7 +91,7 @@ export async function POST(req: Request) {
   
   const stream = new ReadableStream({
     async start(controller) {
-      const sendEvent = (data: any) => {
+      const sendEvent = (data: unknown) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
       
@@ -139,7 +138,7 @@ export async function POST(req: Request) {
                 try {
                     const result = await fetchWithJina(link);
                     combinedKnowledge += `Sub-page (${link}):\n${result.data?.content || ""}\n\n`;
-                } catch (e) {
+                } catch {
                     console.warn(`Failed to fetch ${link}`);
                 }
             }

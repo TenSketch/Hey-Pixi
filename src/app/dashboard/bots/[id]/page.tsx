@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { CheckCircle2, Copy, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Trash2, AlertTriangle, Loader2, MessageCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import Script from "next/script";
@@ -240,7 +240,7 @@ export default function BotSettingsPage() {
             </div>
         )}
 
-        {bot.isActive && (
+        {bot.isActive ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                     <div>
@@ -257,87 +257,90 @@ export default function BotSettingsPage() {
                     </Button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                        <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4 text-brand" />
+                            WhatsApp Lead Alerts
+                        </h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Notification Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={notificationPhone}
+                                    onChange={(e) => {
+                                        setNotificationPhone(e.target.value);
+                                        if (!e.target.value.trim()) setWhatsAppOptIn(false);
+                                    }}
+                                    className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all text-slate-700"
+                                    placeholder="e.g. +91 98765 43210"
+                                />
+                                <p className="mt-2 text-xs text-slate-500">
+                                    The number where you&apos;ll receive real-time alerts when a new lead is captured.
+                                </p>
+                            </div>
+
+                            {notificationPhone.trim() && (
+                                <div className={`p-4 rounded-xl border transition-all ${whatsAppOptIn ? 'bg-brand-light/30 border-brand/20' : 'bg-amber-50 border-amber-200'}`}>
+                                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={whatsAppOptIn}
+                                            onChange={(e) => setWhatsAppOptIn(e.target.checked)}
+                                            className="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20 accent-brand shrink-0"
+                                        />
+                                        <div>
+                                            <span className="text-sm font-bold text-slate-900 block">
+                                                Enable WhatsApp Lead Alerts
+                                            </span>
+                                            <span className="text-xs text-slate-500 mt-1 block leading-relaxed">
+                                                I agree to receive automated lead notifications from Hey-Pixi on this WhatsApp number.
+                                            </span>
+                                            {whatsAppOptIn && (
+                                                <div className="mt-3 p-3 bg-white/60 border border-brand/10 rounded-lg">
+                                                    <span className="text-xs text-brand-dark block">
+                                                        <span className="font-bold">Required:</span> Click below to complete your opt-in via WhatsApp:
+                                                        <br />
+                                                        <a 
+                                                            href="https://apps.gupshup.io/whatsapp/optin?bId=2b0c4374-a2b5-4c2a-ae31-a98bebc9365b&bName=heypixi&s=URL&lang=en_US" 
+                                                            target="_blank" 
+                                                            rel="noreferrer"
+                                                            className="font-bold underline text-brand hover:text-brand-dark mt-1 inline-block"
+                                                        >
+                                                            Confirm Opt-in on WhatsApp
+                                                        </a>
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100">
+                        <label className="block text-sm font-bold text-slate-900 mb-2">
                             System Prompt
                         </label>
                         <textarea
                             value={systemPrompt}
                             onChange={(e) => setSystemPrompt(e.target.value)}
-                            className="w-full h-40 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none text-slate-700 font-sans"
-                            placeholder="Example: You are a friendly customer support agent for Pixi Labs. Your goal is to capture the user's name and phone number."
+                            className="w-full h-48 p-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none text-slate-700 font-mono text-sm"
                         />
-                        <p className="mt-2 text-xs text-slate-400">
-                            This prompt defines the AI&apos;s personality, knowledge, and goals. Be as specific as possible.
-                        </p>
                     </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            WhatsApp Notification Number
-                        </label>
-                        <input
-                            type="text"
-                            value={notificationPhone}
-                            onChange={(e) => {
-                                setNotificationPhone(e.target.value);
-                                // If user clears the phone number, uncheck opt-in
-                                if (!e.target.value.trim()) {
-                                    setWhatsAppOptIn(false);
-                                }
-                            }}
-                            className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all text-slate-700 font-sans"
-                            placeholder="e.g. +919876543210"
-                        />
-                        <p className="mt-2 text-xs text-slate-400">
-                            Enter the WhatsApp number where you want to receive lead notifications. Include country code.
-                        </p>
-                    </div>
-
-                    {/* WhatsApp Opt-In Consent Checkbox - required when phone is provided */}
-                    {notificationPhone.trim() && (
-                        <div className={`p-4 rounded-xl border transition-all ${whatsAppOptIn ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-                            <label className="flex items-start gap-3 cursor-pointer select-none">
-                                <input
-                                    type="checkbox"
-                                    checked={whatsAppOptIn}
-                                    onChange={(e) => setWhatsAppOptIn(e.target.checked)}
-                                    className="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20 accent-brand shrink-0"
-                                />
-                                <div>
-                                    <span className="text-sm font-medium text-slate-700 block">
-                                        I agree to receive WhatsApp notifications {" "}
-                                        <span className="text-red-500">*</span>
-                                    </span>
-                                    <span className="text-xs text-slate-500 mt-1 block leading-relaxed">
-                                        By checking this box, I confirm that I want to receive lead alerts and notifications from Hey-Pixi on this WhatsApp number. 
-                                        I understand that I am providing my consent to receive these automated messages.
-                                    </span>
-                                    {whatsAppOptIn && (
-                                        <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                                            <span className="text-sm font-medium text-blue-800 block mb-1">
-                                                Required: Complete Gupshup Opt-in
-                                            </span>
-                                            <span className="text-xs text-blue-700 block">
-                                                To actually receive messages, you MUST click this link and send the pre-filled message from your WhatsApp number:
-                                                <br />
-                                                <a 
-                                                    href="https://apps.gupshup.io/whatsapp/optin?bId=2b0c4374-a2b5-4c2a-ae31-a98bebc9365b&bName=heypixi&s=URL&lang=en_US" 
-                                                    target="_blank" 
-                                                    rel="noreferrer"
-                                                    className="font-bold underline text-blue-600 hover:text-blue-800 mt-1 inline-block"
-                                                >
-                                                    Click here to Opt-in via WhatsApp
-                                                </a>
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </label>
-                        </div>
-                    )}
                 </div>
+            </div>
+        ) : (
+            <div className="space-y-8 opacity-60 pointer-events-none grayscale-[0.5]">
+                 <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+                    <h3 className="font-bold text-slate-900 text-lg mb-4">Agent Configuration</h3>
+                    <p className="text-slate-500 text-sm mb-6">Activate your agent to unlock configuration settings and lead notifications.</p>
+                    <div className="h-40 bg-slate-50 rounded-xl border border-slate-200 border-dashed" />
+                 </div>
             </div>
         )}
 

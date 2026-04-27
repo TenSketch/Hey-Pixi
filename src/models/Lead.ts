@@ -7,7 +7,7 @@ export interface ILead extends Document {
   email?: string;
   lastMessage: string;
   transcript: unknown[];
-  status: "new" | "contacted" | "resolved";
+  status: "new" | "contacted" | "qualified" | "closed" | "resolved";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,7 +21,7 @@ const LeadSchema = new Schema<ILead>(
     lastMessage: { type: String },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     transcript: { type: [Schema.Types.Mixed], default: [] } as any,
-    status: { type: String, enum: ["new", "contacted", "resolved"], default: "new" },
+    status: { type: String, enum: ["new", "contacted", "qualified", "closed", "resolved"], default: "new" },
   },
   { timestamps: true }
 );
