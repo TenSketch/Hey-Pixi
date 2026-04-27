@@ -1,5 +1,4 @@
 import { Lead } from "@/models";
-import { sendWhatsAppNotification } from "@/lib/gupshup";
 import dbConnect from "@/lib/mongodb";
 import mongoose from "mongoose";
 import { BadRequestError } from "@/lib/errors";
@@ -14,7 +13,7 @@ export class LeadService {
     email?: string;
     lastMessage: string;
     history: ChatHistoryItem[];
-    botSnapshot: { name: string; notificationPhone?: string; whatsAppOptIn?: boolean };
+    botSnapshot: { name: string };
   }) {
     // Basic validation
     if (!data.name) {
@@ -41,15 +40,6 @@ export class LeadService {
       status: "new"
     });
 
-    // Trigger WhatsApp Notification (only if phone is valid)
-    if (data.botSnapshot?.notificationPhone && data.botSnapshot?.whatsAppOptIn) {
-      sendWhatsAppNotification(data.botSnapshot.notificationPhone, {
-        name: sanitizedName,
-        phone: data.phone,
-        email: data.email,
-        botName: data.botSnapshot.name
-      }).catch(err => console.error("WhatsApp Notification Failed:", err));
-    }
 
     return lead;
   }

@@ -48,15 +48,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const body = await req.json();
-    const { systemPrompt, name, role, notificationPhone, whatsAppOptIn } = body;
+    const { systemPrompt, name, role } = body;
 
-    // Validate: if notificationPhone is provided, whatsAppOptIn must be true
-    if (notificationPhone && !whatsAppOptIn) {
-      return NextResponse.json(
-        { error: "You must agree to the WhatsApp notifications policy to enable lead alerts." },
-        { status: 400 }
-      );
-    }
 
     // Validate system prompt length
     if (systemPrompt !== undefined && typeof systemPrompt === "string" && systemPrompt.length > 4000) {
@@ -72,14 +65,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       systemPrompt?: string;
       name?: string;
       role?: string;
-      notificationPhone?: string;
-      whatsAppOptIn?: boolean;
     } = {};
     if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
     if (name !== undefined) updateData.name = name;
     if (role !== undefined) updateData.role = role;
-    if (notificationPhone !== undefined) updateData.notificationPhone = notificationPhone;
-    if (whatsAppOptIn !== undefined) updateData.whatsAppOptIn = whatsAppOptIn;
+    if (role !== undefined) updateData.role = role;
 
     const bot = await BotConfig.findOneAndUpdate(
       { _id: id, userId: dbUser._id },

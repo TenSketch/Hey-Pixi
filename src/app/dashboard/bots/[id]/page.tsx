@@ -44,8 +44,6 @@ export default function BotSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [notificationPhone, setNotificationPhone] = useState("");
-  const [whatsAppOptIn, setWhatsAppOptIn] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -58,26 +56,19 @@ export default function BotSettingsPage() {
             if (data.bot) {
                 setBot(data.bot);
                 setSystemPrompt(data.bot.systemPrompt || "");
-                setNotificationPhone(data.bot.notificationPhone || "");
-                setWhatsAppOptIn(data.bot.whatsAppOptIn || false);
             }
             setLoading(false);
         });
   }, [id]);
 
   const handleSave = async () => {
-    // Client-side validation
-    if (notificationPhone.trim() && !whatsAppOptIn) {
-        toast.error("You must agree to the WhatsApp opt-in policy to enable notifications.");
-        return;
-    }
 
     setIsSaving(true);
     try {
         const res = await fetch(`/api/bots/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ systemPrompt, notificationPhone, whatsAppOptIn })
+            body: JSON.stringify({ systemPrompt })
         });
         const data = await res.json();
         if (data.success) {
@@ -258,69 +249,6 @@ export default function BotSettingsPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <div>
-                        <h4 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4 text-brand" />
-                            WhatsApp Lead Alerts
-                        </h4>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Notification Number
-                                </label>
-                                <input
-                                    type="text"
-                                    value={notificationPhone}
-                                    onChange={(e) => {
-                                        setNotificationPhone(e.target.value);
-                                        if (!e.target.value.trim()) setWhatsAppOptIn(false);
-                                    }}
-                                    className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all text-slate-700"
-                                    placeholder="e.g. +91 98765 43210"
-                                />
-                                <p className="mt-2 text-xs text-slate-500">
-                                    The number where you&apos;ll receive real-time alerts when a new lead is captured.
-                                </p>
-                            </div>
-
-                            {notificationPhone.trim() && (
-                                <div className={`p-4 rounded-xl border transition-all ${whatsAppOptIn ? 'bg-brand-light/30 border-brand/20' : 'bg-amber-50 border-amber-200'}`}>
-                                    <label className="flex items-start gap-3 cursor-pointer select-none">
-                                        <input
-                                            type="checkbox"
-                                            checked={whatsAppOptIn}
-                                            onChange={(e) => setWhatsAppOptIn(e.target.checked)}
-                                            className="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20 accent-brand shrink-0"
-                                        />
-                                        <div>
-                                            <span className="text-sm font-bold text-slate-900 block">
-                                                Enable WhatsApp Lead Alerts
-                                            </span>
-                                            <span className="text-xs text-slate-500 mt-1 block leading-relaxed">
-                                                I agree to receive automated lead notifications from Hey-Pixi on this WhatsApp number.
-                                            </span>
-                                            {whatsAppOptIn && (
-                                                <div className="mt-3 p-3 bg-white/60 border border-brand/10 rounded-lg">
-                                                    <span className="text-xs text-brand-dark block">
-                                                        <span className="font-bold">Required:</span> Click below to complete your opt-in via WhatsApp:
-                                                        <br />
-                                                        <a 
-                                                            href="https://apps.gupshup.io/whatsapp/optin?bId=2b0c4374-a2b5-4c2a-ae31-a98bebc9365b&bName=heypixi&s=URL&lang=en_US" 
-                                                            target="_blank" 
-                                                            rel="noreferrer"
-                                                            className="font-bold underline text-brand hover:text-brand-dark mt-1 inline-block"
-                                                        >
-                                                            Confirm Opt-in on WhatsApp
-                                                        </a>
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </label>
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
                     <div className="pt-6 border-t border-slate-100">
                         <label className="block text-sm font-bold text-slate-900 mb-2">

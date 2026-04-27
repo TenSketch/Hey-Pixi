@@ -29,7 +29,7 @@ export class ChatService {
     }
 
     let systemPrompt = "You are a helpful assistant.";
-    let botSnapshot: { _id: mongoose.Types.ObjectId; systemPrompt?: string; name: string; notificationPhone?: string; whatsAppOptIn?: boolean } | null = null;
+    let botSnapshot: { _id: mongoose.Types.ObjectId; systemPrompt?: string; name: string } | null = null;
 
     // Fetch custom bot from DB if botId provided
     if (botId && botId !== 'custom') {

@@ -105,10 +105,7 @@ export async function deleteBot(botId: string) {
     }
 }
 
-export async function updateBotSettings(botId: string, data: {
-    notificationPhone?: string;
-    whatsAppOptIn?: boolean;
-}) {
+export async function updateBotSettings(botId: string, data: Record<string, any>) {
     try {
         const session = await auth();
         if (!session?.user?.email) {

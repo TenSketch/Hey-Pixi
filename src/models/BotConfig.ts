@@ -8,8 +8,6 @@ export interface IBotConfig extends Document {
   systemPrompt: string;
   themeColor: string;
   isActive: boolean;
-  notificationPhone?: string;
-  whatsAppOptIn?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,8 +21,6 @@ const BotConfigSchema = new Schema<IBotConfig>(
     systemPrompt: { type: String, required: true },
     themeColor: { type: String, default: "#0f172a" },
     isActive: { type: Boolean, default: false },
-    notificationPhone: { type: String },
-    whatsAppOptIn: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
