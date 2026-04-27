@@ -6,7 +6,8 @@ import { Bot, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { LeadCaptureForm } from "./LeadCaptureForm";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_TO_SEND = 10;
@@ -15,6 +16,7 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
     const [messages, setMessages] = useState([{ id: 1, text: `Hello! I am ${botName}. How can I help you today?`, sender: 'bot' }]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedService, setSelectedService] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -104,8 +106,26 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                                 m.sender === 'user' ? "prose-invert" : "prose-slate"
                             )}>
                                 {/* SECURITY: Using rehype-sanitize to prevent XSS from AI prompt injection */}
-                                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{m.text}</ReactMarkdown>
+                                <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                                    {m.text.replace(/\[\[BUTTON: (.*?)\]\]/g, "").trim()}
+                                </ReactMarkdown>
                             </div>
+                            
+                            {/* Render Buttons if any */}
+                            {m.sender === 'bot' && m.text.includes("[[BUTTON: ") && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {Array.from(m.text.matchAll(/\[\[BUTTON: (.*?)\]\]/g)).map((match, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedService(match[1])}
+                                            className="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:bg-slate-50 active:scale-95"
+                                            style={{ borderColor: themeColor, color: themeColor }}
+                                        >
+                                            {match[1]}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 ))}
@@ -145,6 +165,25 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
                     <Send size={16} />
                 </Button>
             </form>
+
+            {/* Lead Capture Overlay */}
+            <AnimatePresence>
+                {selectedService && (
+                    <LeadCaptureForm 
+                        botId={botId}
+                        selectedService={selectedService}
+                        themeColor={themeColor}
+                        onClose={() => setSelectedService(null)}
+                        onSuccess={() => {
+                            setMessages(prev => [...prev, { 
+                                id: Date.now(), 
+                                text: `I have selected: ${selectedService}. My details have been submitted!`, 
+                                sender: 'user' 
+                            }]);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }

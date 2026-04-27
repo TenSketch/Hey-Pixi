@@ -1,4 +1,5 @@
-import { Lead } from "@/models";
+import { Lead, User, BotConfig } from "@/models";
+import { sendLeadNotification } from "@/lib/mail";
 import dbConnect from "@/lib/mongodb";
 import mongoose from "mongoose";
 import { BadRequestError } from "@/lib/errors";
@@ -39,6 +40,24 @@ export class LeadService {
       transcript: data.history.concat({ text: data.lastMessage, sender: 'user' }), 
       status: "new"
     });
+
+    // Send Email Notification to Bot Creator
+    try {
+      const bot = await BotConfig.findById(data.botId);
+      if (bot) {
+        const creator = await User.findById(bot.userId);
+        if (creator?.email) {
+          sendLeadNotification(creator.email, {
+            name: sanitizedName,
+            email: data.email,
+            phone: data.phone,
+            botName: data.botSnapshot.name
+          }).catch(err => console.error("Email Notification Failed:", err));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to trigger email notification:", err);
+    }
 
 
     return lead;
