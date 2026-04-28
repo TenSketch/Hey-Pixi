@@ -151,8 +151,6 @@ export async function POST(req: Request) {
                     const ocrPath = path.join(process.cwd(), "src/lib/ocr-data");
                     const worker = await createWorker('eng', 1, {
                         cachePath: ocrPath,
-                        workerPath: 'https://unpkg.com/tesseract.js@7.0.0/dist/worker.min.js',
-                        corePath: 'https://unpkg.com/tesseract.js-core@7.0.0/tesseract-core.wasm.js',
                     });
                     
                     let ocrText = "";
