@@ -1,5 +1,6 @@
 import { rateLimit } from "@/lib/rate-limit";
 import Groq from "groq-sdk";
+import path from "path";
 
 const limiter = rateLimit({
     interval: 60 * 1000, 
@@ -108,10 +109,10 @@ export async function POST(req: Request) {
             return sendError("Rate limit exceeded. Highly intensive analysis is limited to 3 per minute.");
         }
 
-        const { url, role, botName } = await req.json();
+        const { url, role, botName, pdfBase64, fileName } = await req.json();
 
-        if (!url || !role) {
-          return sendError("Missing url or role");
+        if (!role || (!url && !pdfBase64)) {
+          return sendError("Missing required data (url/pdf or role)");
         }
 
         const apiKey = process.env.GROQ_API_KEY;
@@ -120,26 +121,86 @@ export async function POST(req: Request) {
         }
         const groq = new Groq({ apiKey });
 
-        // 1. Fetch Main Page
-        sendEvent({ status: `Reading ${url}...` });
-        const mainPageData = await fetchWithJina(url);
-        const mainContent = mainPageData.data?.content || "";
-        
-        // 2. Multi-Page Discovery
-        const subLinks = extractInternalLinks(mainPageData.data?.links, url);
-        
-        let combinedKnowledge = `Main Page (${url}):\n${mainContent}\n\n`;
+        let combinedKnowledge = "";
 
-        // 3. Sequential or Parallel Fetching with Progress
-        if (subLinks.length > 0) {
-            for (let i = 0; i < subLinks.length; i++) {
-                const link = subLinks[i];
-                sendEvent({ status: `Fetching deeper context (${i + 1}/${subLinks.length})...` });
-                try {
-                    const result = await fetchWithJina(link);
-                    combinedKnowledge += `Sub-page (${link}):\n${result.data?.content || ""}\n\n`;
-                } catch {
-                    console.warn(`Failed to fetch ${link}`);
+        if (pdfBase64) {
+            // PDF Analysis
+            sendEvent({ status: `Reading PDF: ${fileName || "document"}...` });
+            try {
+                // Dynamic import to avoid issues with non-standard environments
+                const { getPath } = await import("pdf-parse/worker");
+                const { PDFParse } = await import("pdf-parse");
+                PDFParse.setWorker(getPath());
+                
+                const buffer = Buffer.from(pdfBase64, 'base64');
+                const parser = new PDFParse({ data: buffer });
+                
+                // 1. Try standard text extraction
+                const data = await parser.getText();
+                let extractedText = data.text || "";
+                
+                // 2. OCR Fallback if text is suspiciously short (likely an image-based PDF)
+                if (extractedText.trim().length < 100) {
+                    sendEvent({ status: `No text found. Starting OCR analysis...` });
+                    console.log("[PDF] No text found, attempting OCR...");
+                    
+                    const screenshotResult = await parser.getScreenshot({ scale: 2.0 });
+                    const { createWorker } = await import("tesseract.js");
+                    
+                    // Use bundled trained data from the repository
+                    const ocrPath = path.join(process.cwd(), "src/lib/ocr-data");
+                    const worker = await createWorker('eng', 1, {
+                        cachePath: ocrPath,
+                        workerPath: 'https://unpkg.com/tesseract.js@7.0.0/dist/worker.min.js',
+                        corePath: 'https://unpkg.com/tesseract.js-core@7.0.0/tesseract-core.wasm.js',
+                    });
+                    
+                    let ocrText = "";
+                    for (let i = 0; i < screenshotResult.pages.length; i++) {
+                        sendEvent({ status: `OCR processing page ${i + 1}/${screenshotResult.pages.length}...` });
+                        const page = screenshotResult.pages[i];
+                        const { data: { text } } = await worker.recognize(Buffer.from(page.data));
+                        ocrText += `--- Page ${i + 1} ---\n${text}\n\n`;
+                    }
+                    
+                    await worker.terminate();
+                    extractedText = ocrText;
+                }
+                
+                combinedKnowledge = `PDF Document (${fileName || "document"}):\n${extractedText}\n\n`;
+                console.log(`[PDF] Final knowledge size: ${combinedKnowledge.length} chars.`);
+                
+                await parser.destroy();
+                
+                if (!extractedText || extractedText.trim().length < 50) {
+                    throw new Error("PDF seems empty or contains unreadable text even after OCR");
+                }
+            } catch (err) {
+                console.error("PDF Parsing/OCR Error:", err);
+                return sendError(`Failed to parse PDF: ${err instanceof Error ? err.message : 'Unknown error'}`);
+            }
+        } else {
+            // Website Analysis (Existing Jina logic)
+            sendEvent({ status: `Reading ${url}...` });
+            const mainPageData = await fetchWithJina(url);
+            const mainContent = mainPageData.data?.content || "";
+            
+            // 2. Multi-Page Discovery
+            const subLinks = extractInternalLinks(mainPageData.data?.links, url);
+            
+            combinedKnowledge = `Main Page (${url}):\n${mainContent}\n\n`;
+
+            // 3. Sequential or Parallel Fetching with Progress
+            if (subLinks.length > 0) {
+                for (let i = 0; i < subLinks.length; i++) {
+                    const link = subLinks[i];
+                    sendEvent({ status: `Fetching deeper context (${i + 1}/${subLinks.length})...` });
+                    try {
+                        const result = await fetchWithJina(link);
+                        combinedKnowledge += `Sub-page (${link}):\n${result.data?.content || ""}\n\n`;
+                    } catch {
+                        console.warn(`Failed to fetch ${link}`);
+                    }
                 }
             }
         }
@@ -149,8 +210,9 @@ export async function POST(req: Request) {
 
         // 4. STEP 1: Semantic Extraction
         sendEvent({ status: `Analyzing business model...` });
+        const sourceContext = pdfBase64 ? "PDF document" : "website content";
         const extractionPrompt = `
-        You are a high-precision data extractor. Analyze the provided website content and extract a structured Business Profile.
+        You are a high-precision data extractor. Analyze the provided ${sourceContext} and extract a structured Business Profile.
         
         CONTENT:
         """
