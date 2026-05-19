@@ -47,12 +47,12 @@ export class LeadService {
       if (bot) {
         const creator = await User.findById(bot.userId);
         if (creator?.email) {
-          sendLeadNotification(creator.email, {
+          await sendLeadNotification(creator.email, {
             name: sanitizedName,
             email: data.email,
             phone: data.phone,
             botName: data.botSnapshot.name
-          }).catch(err => console.error("Email Notification Failed:", err));
+          });
         }
       }
     } catch (err) {
