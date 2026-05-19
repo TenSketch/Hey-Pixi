@@ -8,7 +8,8 @@ const limiter = rateLimit({
 });
 
 const JINA_API_URL = "https://r.jina.ai/";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL_EXTRACTION = "llama-3.1-8b-instant";
+const GROQ_MODEL_ARCHITECT = "llama-3.3-70b-versatile";
 
 /**
  * Fetches content from a URL using Jina Reader
@@ -233,7 +234,7 @@ export async function POST(req: Request) {
 
         const extractionResponse = await groq.chat.completions.create({
             messages: [{ role: "system", content: extractionPrompt }],
-            model: GROQ_MODEL,
+            model: GROQ_MODEL_EXTRACTION,
             response_format: { type: "json_object" },
             temperature: 0.1,
         });
@@ -269,7 +270,7 @@ export async function POST(req: Request) {
 
         const finalCompletion = await groq.chat.completions.create({
             messages: [{ role: "user", content: architectPrompt }],
-            model: GROQ_MODEL,
+            model: GROQ_MODEL_ARCHITECT,
             temperature: 0.3,
         });
 

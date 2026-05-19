@@ -75,7 +75,7 @@ export class ChatService {
 
     const chatCompletion = await this.groq.chat.completions.create({
       messages,
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       tools,
       tool_choice: "auto",
     });
