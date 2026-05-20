@@ -36,6 +36,21 @@ export function LeadCaptureForm({ botId, selectedService, themeColor, onClose, o
             return setError("Please enter a valid email address");
         }
 
+        let normalizedPhone = formData.phone;
+        if (formData.phone) {
+            const cleanPhone = formData.phone.replace(/\D/g, "");
+            let checkPhone = cleanPhone;
+            if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+                checkPhone = cleanPhone.slice(2);
+            } else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
+                checkPhone = cleanPhone.slice(1);
+            }
+            if (checkPhone.length !== 10) {
+                return setError("Please enter a valid 10-digit mobile number");
+            }
+            normalizedPhone = checkPhone;
+        }
+
         setIsSubmitting(true);
         try {
             const res = await fetch("/api/leads/capture", {
@@ -44,7 +59,9 @@ export function LeadCaptureForm({ botId, selectedService, themeColor, onClose, o
                 body: JSON.stringify({
                     botId,
                     selectedService,
-                    ...formData
+                    name: formData.name,
+                    email: formData.email,
+                    phone: normalizedPhone
                 })
             });
 

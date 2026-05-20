@@ -94,19 +94,35 @@ export class ChatService {
             
             // SECURITY: Validate lead data before saving
             const isEmailValid = args.email ? VALIDATION.EMAIL_REGEX.test(args.email) : true;
-            const isPhoneValid = args.phone ? VALIDATION.PHONE_REGEX.test(args.phone) : true;
+            
+            let isPhoneValid = true;
+            let normalizedPhone = args.phone;
+            if (args.phone) {
+                const cleanPhone = args.phone.replace(/\D/g, "");
+                let checkPhone = cleanPhone;
+                if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+                    checkPhone = cleanPhone.slice(2);
+                } else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
+                    checkPhone = cleanPhone.slice(1);
+                }
+                if (checkPhone.length !== 10) {
+                    isPhoneValid = false;
+                } else {
+                    normalizedPhone = checkPhone;
+                }
+            }
 
             if (!isEmailValid || !isPhoneValid) {
-                text = "Thank you! I noticed the contact details provided might be in an incorrect format. Could you please provide a valid email or phone number? This helps our team reach you correctly!";
+                text = "Thank you! I noticed the contact details provided might be in an incorrect format. Could you please provide a valid email or valid 10-digit mobile number? This helps our team reach you correctly!";
                 break; // Skip capture
             }
 
             // Only proceed if we have at least name + (phone or email)
-            if (args.name && (args.phone || args.email)) {
+            if (args.name && (normalizedPhone || args.email)) {
               await LeadService.captureLead({
                 botId: botSnapshot._id,
                 name: args.name,
-                phone: args.phone,
+                phone: normalizedPhone,
                 email: args.email,
                 lastMessage: message,
                 history: truncatedHistory,

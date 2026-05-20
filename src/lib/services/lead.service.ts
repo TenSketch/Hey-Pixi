@@ -30,11 +30,27 @@ export class LeadService {
     // Sanitize name
     const sanitizedName = data.name.trim().substring(0, 100);
 
+    // Sanitize and validate phone
+    let normalizedPhone = data.phone?.trim();
+    if (normalizedPhone) {
+      const cleanPhone = normalizedPhone.replace(/\D/g, "");
+      let checkPhone = cleanPhone;
+      if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+        checkPhone = cleanPhone.slice(2);
+      } else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
+        checkPhone = cleanPhone.slice(1);
+      }
+      if (checkPhone.length !== 10) {
+        throw new BadRequestError("Lead capture failed: Phone number must be exactly 10 digits");
+      }
+      normalizedPhone = checkPhone;
+    }
+
     // Create the lead
     const lead = await Lead.create({
       botId: data.botId,
       name: sanitizedName,
-      phone: data.phone?.trim(),
+      phone: normalizedPhone,
       email: data.email?.trim()?.toLowerCase(),
       lastMessage: data.lastMessage,
       transcript: data.history.concat({ text: data.lastMessage, sender: 'user' }), 

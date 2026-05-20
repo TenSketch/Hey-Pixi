@@ -38,17 +38,8 @@ export function Navbar() {
            <span className="font-bold text-xl tracking-tight text-slate-900">HeyPixi</span>
         </Link>
 
-        {/* Desktop Nav */}
+        {/* Desktop Nav - Cleaned up to match single page gamified flow */}
         <div className="hidden md:flex items-center gap-8">
-            <Link href="#features" className="text-sm font-semibold text-slate-600 hover:text-brand transition-colors">
-                Plugin Types
-            </Link>
-             <Link href="#demo" className="text-sm font-semibold text-slate-600 hover:text-brand transition-colors">
-                Live Demo
-            </Link>
-             <Link href="#pricing" className="text-sm font-semibold text-slate-600 hover:text-brand transition-colors">
-                Pricing
-            </Link>
         </div>
 
         {/* CTAs */}
@@ -89,12 +80,7 @@ export function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             className="md:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-200 p-6 shadow-xl flex flex-col gap-4"
         >
-             <Link href="#features" className="text-lg font-medium text-slate-800 p-2" onClick={() => setIsOpen(false)}>
-                Plugin Types
-            </Link>
-             <Link href="#demo" className="text-lg font-medium text-slate-800 p-2" onClick={() => setIsOpen(false)}>
-                Live Demo
-            </Link>
+             {/* Mobile Nav - Cleaned up */}
             <div className="flex flex-col gap-3 pt-4 border-t border-slate-100">
                  {status === "unauthenticated" ? (
                     <>
