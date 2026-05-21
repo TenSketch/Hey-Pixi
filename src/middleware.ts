@@ -19,7 +19,7 @@ export default auth((req) => {
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' data: blob: https://cdn.razorpay.com;
     font-src 'self' https://fonts.gstatic.com;
-    connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com;
+    connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.vercel.app https://heypixi.in https://www.heypixi.in;
     frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com;
     object-src 'none';
     base-uri 'self';

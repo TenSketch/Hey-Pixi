@@ -50,8 +50,7 @@ function TestChatWindow({ botName, role, url, onClose }: { botName: string, role
         setIsLoading(true)
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
-            const res = await fetch(apiUrl, {
+            const res = await fetch('/api/chat', {
                 method: 'POST',
                 body: JSON.stringify({
                     message: userMsg.text,

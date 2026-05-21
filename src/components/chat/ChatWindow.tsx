@@ -37,8 +37,7 @@ export function ChatWindow({ botId, botName, themeColor = "#0f172a" }: { botId: 
         const history = messages.slice(-MAX_HISTORY_TO_SEND).map(m => ({ text: m.text, sender: m.sender }));
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
-            const res = await fetch(apiUrl, {
+            const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

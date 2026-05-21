@@ -78,8 +78,7 @@ export function LiveDemo() {
       setIsTyping(true)
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/chat';
-        const response = await fetch(apiUrl, {
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
