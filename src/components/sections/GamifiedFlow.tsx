@@ -35,7 +35,6 @@ import {
 const PROBLEMS = [
   { id: "leads", emoji: "😤", text: "Not getting leads", color: "from-rose-500 to-orange-500" },
   { id: "repeated", emoji: "📞", text: "Too many repeated questions", color: "from-amber-500 to-yellow-500" },
-  { id: "data", emoji: "📊", text: "Don’t understand my data", color: "from-teal-500 to-emerald-500" },
   { id: "converting", emoji: "🛍️", text: "Not converting visitors", color: "from-violet-500 to-fuchsia-500" },
   { id: "automation", emoji: "🧾", text: "Need automation", color: "from-blue-500 to-indigo-500" },
 ]
@@ -78,23 +77,6 @@ const QUESTIONS_BY_PROBLEM: Record<string, {
       "Ugh, answering the same question daily is a huge energy drain.",
       "We'll train Pixi directly on that source in seconds!",
       "Whoa! That's a massive productivity multiplier."
-    ]
-  },
-  "data": {
-    questions: [
-      "What analytics tool do you currently use (or try to use)? 📊",
-      "Which metric keeps you up at night? 🌙",
-      "How would you prefer Pixi to present reports to you? 📬"
-    ],
-    options: [
-      ["Google Analytics", "Mixpanel / Amplitude", "Just Stripe/Shopify dash", "Honestly, nothing yet!"],
-      ["Bounce rate / Drop-offs", "Abandoned checkouts", "Cost per acquisition", "Where leads get lost"],
-      ["Daily Slack summary", "A weekly email report", "Interactive web dashboard"]
-    ],
-    replies: [
-      "Ah, GA can be a complete maze to navigate.",
-      "Totally. Let's pinpoint exactly why that happens.",
-      "Got it! Visual, clean, and direct reporting is key."
     ]
   },
   "converting": {
@@ -200,8 +182,6 @@ export function GamifiedFlow() {
           greeting += "I'm primed and ready to capture high-value leads on your website! Shall we see how I qualify your visitors?"
         } else if (selectedProblem?.id === "repeated") {
           greeting += "I'm trained on your documents and ready to answering support questions 24/7. Want to see a quick test?"
-        } else if (selectedProblem?.id === "data") {
-          greeting += "I'm loaded with analytics capabilities and ready to summarize visitor insights. Let's see how I collect lead feedback!"
         } else if (selectedProblem?.id === "converting") {
           greeting += "I'm set up with exit-intent intelligence to offer personalized discounts and save bouncing carts. Try chatting with me!"
         } else {
