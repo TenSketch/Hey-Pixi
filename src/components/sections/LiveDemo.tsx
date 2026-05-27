@@ -5,53 +5,100 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import { Send, Bot, ShoppingBag, Stethoscope, Briefcase, RefreshCcw } from "lucide-react"
+import { Send, Bot, Target, Headphones, RefreshCcw, Globe, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
 import ReactMarkdown from 'react-markdown'
 
 // Types of Pixi Personalities
 const PIXI_MODES = [
   { 
-    id: 'general', 
-    name: 'General Pixi', 
+    id: 'leadgen', 
+    name: 'Pixi Lead Gen', 
+    icon: Target, 
+    color: 'bg-emerald-500', 
+    description: 'Capture & qualify leads.',
+    initialMessage: "Hi! I'm your Lead Gen Pixi 🎯 I'll help you capture and qualify visitors. Want to see how I collect name, phone, and requirements?" 
+  },
+  { 
+    id: 'support', 
+    name: 'Pixi Support', 
+    icon: Headphones, 
+    color: 'bg-blue-500',
+    description: 'Answer FAQs 24/7.',
+    initialMessage: "Hey! I'm your Support Pixi 🎧 Ask me any question about your product or service — I'm trained on your docs!" 
+  },
+  { 
+    id: 'coming-soon', 
+    name: 'More Coming Soon', 
     icon: Bot, 
-    color: 'bg-blue-500', 
-    description: 'Trained on company data.',
-    initialMessage: "Hi! I'm Pixi. Ask me anything about TenSketch or our services! 👋" 
-  },
-  { 
-    id: 'healthcare', 
-    name: 'Healthcare Pixi', 
-    icon: Stethoscope, 
-    color: 'bg-emerald-500',
-    description: 'Patient scheduling.',
-    initialMessage: "Hello! Welcome to City Hospital. How can I help you book an appointment today?" 
-  },
-  { 
-    id: 'ecommerce', 
-    name: 'E-commerce Pixi', 
-    icon: ShoppingBag, 
-    color: 'bg-violet-500',
-    description: 'Product support.',
-    initialMessage: "Hey! Looking for some trendy sneakers or a gift? I can help you find the perfect match! 👟" 
-  },
-  { 
-    id: 'saas', 
-    name: 'SaaS Support', 
-    icon: Briefcase, 
-    color: 'bg-amber-500',
-    description: 'Tech onboarding.',
-    initialMessage: "Welcome to SaaSY! Need help configuring your API keys or setting up the dashboard?" 
+    color: 'bg-slate-300',
+    description: 'E-commerce, Healthcare, SaaS...',
+    initialMessage: "",
+    disabled: true
   },
 ]
 
 type Message = { id: number; text: string; sender: 'user' | 'bot'; }
+
+const MODE_BY_ID: Record<string, typeof PIXI_MODES[0]> = Object.fromEntries(
+  PIXI_MODES.filter(m => !m.disabled).map(m => [m.id, m])
+)
 
 export function LiveDemo() {
   const [activeMode, setActiveMode] = useState(PIXI_MODES[0])
   const [messages, setMessages] = useState<Message[]>([{ id: 1, text: PIXI_MODES[0].initialMessage, sender: 'bot' }])
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [showUrlInput, setShowUrlInput] = useState(false)
+  const [customUrl, setCustomUrl] = useState("")
+  const [isTraining, setIsTraining] = useState(false)
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string | null>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
+
+  const handleModeSwitch = (mode: typeof PIXI_MODES[0]) => {
+      setActiveMode(mode)
+      setMessages([{ id: Date.now(), text: mode.initialMessage, sender: 'bot' }])
+      setCustomSystemPrompt(null)
+      setShowUrlInput(false)
+  }
+
+  const handleTrainOnUrl = async () => {
+    if (!customUrl.trim()) return
+    setIsTraining(true)
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: customUrl.trim(), sourceType: 'url' })
+      })
+      const data = await res.json()
+      if (data.prompt) {
+        setCustomSystemPrompt(data.prompt)
+        setMessages([
+          { id: Date.now(), text: `I've learned about your website! 🎉 Ask me anything about ${customUrl.trim()} or switch personalities above.`, sender: 'bot' }
+        ])
+      } else {
+        setCustomSystemPrompt(`You are a helpful assistant trained on content from ${customUrl.trim()}. Answer questions based on that knowledge.`)
+        setMessages([
+          { id: Date.now(), text: `I've noted your website! 🎉 I'll do my best to answer based on ${customUrl.trim()}. Try asking me something!`, sender: 'bot' }
+        ])
+      }
+    } catch {
+      setMessages(prev => [...prev, { id: Date.now(), text: "Couldn't analyze that URL. Try a different one or just chat with me! 😊", sender: 'bot' }])
+    } finally {
+      setIsTraining(false)
+    }
+  }
+
+  // Listen for custom event from ChatbotTypes cards
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { mode } = (e as CustomEvent).detail
+      const found = MODE_BY_ID[mode]
+      if (found) handleModeSwitch(found)
+    }
+    window.addEventListener("pixi-switch-mode", handler)
+    return () => window.removeEventListener("pixi-switch-mode", handler)
+  }, [])
 
   const scrollToBottom = () => { 
       if (chatContainerRef.current) {
@@ -62,11 +109,6 @@ export function LiveDemo() {
       }
   }
   useEffect(() => { scrollToBottom() }, [messages, isTyping])
-
-  const handleModeSwitch = (mode: typeof PIXI_MODES[0]) => {
-      setActiveMode(mode)
-      setMessages([{ id: Date.now(), text: mode.initialMessage, sender: 'bot' }])
-  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
       e.preventDefault()
@@ -83,7 +125,8 @@ export function LiveDemo() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 message: inputValue, 
-                persona: activeMode.id 
+                persona: activeMode.id,
+                ...(customSystemPrompt ? { systemPrompt: customSystemPrompt } : {})
             })
         })
         
@@ -103,7 +146,7 @@ export function LiveDemo() {
   }
 
   return (
-    <section id="demo" className="py-24 bg-white relative overflow-hidden">
+    <section id="demo" className="py-24 md:py-32 bg-white relative overflow-hidden scroll-mt-24">
         {/* Soft decorative background */}
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50/50 via-white to-white pointer-events-none" />
 
@@ -114,11 +157,11 @@ export function LiveDemo() {
                 whileInView={{ opacity: 1, y: 0 }}
              >
                 <h2 className="text-4xl md:text-5xl font-bold mb-4 text-slate-900">
-                    See Pixi in <span className="text-brand">Action</span>
+                    Talk to <span className="text-gradient">Pixi</span> Right Now
                 </h2>
             </motion.div>
             <p className="text-slate-600 text-lg max-w-2xl mx-auto">
-                Real-time AI that adapts to your industry. Try switching personalities below.
+                Switch between Lead Gen and Support mode — or try with your own website URL.
             </p>
         </div>
 
@@ -126,23 +169,91 @@ export function LiveDemo() {
             {/* Personality Selector - Sidebar */}
             <div className="lg:col-span-3 flex flex-col gap-3">
                 <div className="bg-white p-2 border border-slate-200 sticky top-24">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono px-3 pb-2 pt-1">Personalities</div>
                     {PIXI_MODES.map((mode) => (
                         <button
                             key={mode.id}
-                            onClick={() => handleModeSwitch(mode)}
+                            onClick={() => !mode.disabled && handleModeSwitch(mode)}
+                            disabled={mode.disabled}
                             className={cn(
-                                "flex items-center gap-3 p-3 transition-all duration-200 w-full text-left relative overflow-hidden border-b border-transparent hover:border-slate-100",
-                                activeMode.id === mode.id 
+                                "flex items-center gap-3 p-3 transition-all duration-200 w-full text-left relative overflow-hidden border-b border-transparent",
+                                mode.disabled
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:border-slate-100",
+                                !mode.disabled && activeMode.id === mode.id
                                     ? "bg-slate-50 text-slate-900 font-bold border-l-2 border-l-brand" 
-                                    : "hover:bg-slate-50 text-slate-500 hover:text-slate-900"
+                                    : !mode.disabled && "hover:bg-slate-50 text-slate-500 hover:text-slate-900"
                             )}
                         >
                             <div className={cn("p-2 text-white shadow-sm transition-transform", mode.color)}>
                                 <mode.icon size={16} />
                             </div>
-                            <span className="text-sm font-mono">{mode.name}</span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-mono block truncate">{mode.name}</span>
+                                  {mode.disabled && (
+                                    <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">Soon</span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-medium block truncate">{mode.description}</span>
+                            </div>
                         </button>
                     ))}
+
+                    {/* Divider */}
+                    <div className="border-t border-slate-100 my-2" />
+
+                    {/* Try with your own data */}
+                    <div className="px-3 pt-1 pb-2">
+                        <button
+                            onClick={() => setShowUrlInput(!showUrlInput)}
+                            className="flex items-center gap-2 w-full text-left text-xs font-bold text-slate-500 hover:text-brand transition-colors"
+                        >
+                            <Globe size={14} />
+                            <span>Try with your own data</span>
+                            {showUrlInput ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
+                        </button>
+
+                        <AnimatePresence>
+                          {showUrlInput && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="pt-3 space-y-2">
+                                <input
+                                  type="text"
+                                  value={customUrl}
+                                  onChange={(e) => setCustomUrl(e.target.value)}
+                                  placeholder="https://your-store.com"
+                                  className="w-full bg-slate-50 border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/15 text-slate-800 rounded-none"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={handleTrainOnUrl}
+                                  disabled={!customUrl.trim() || isTraining}
+                                  className="w-full bg-brand hover:bg-brand-dark text-white text-xs font-bold h-8 rounded-none"
+                                >
+                                  {isTraining ? (
+                                    <><Loader2 size={12} className="animate-spin mr-1" /> Learning...</>
+                                  ) : (
+                                    <><Globe size={12} className="mr-1" /> Train on my site</>
+                                  )}
+                                </Button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {customSystemPrompt && (
+                          <div className="mt-2 flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                            Using your website data
+                          </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hey Pixi | Intelligent Sales Agent",
-  description: "Deploy autonomous AI agents that qualify leads, book meetings, and solve tickets 24/7.",
+  title: "Hey Pixi | Talk to AI Before You Buy It",
+  description: "Play with interactive AI chatbots. See types, choose one, try with your own business data. No signup required.",
 };
 
 export default function RootLayout({

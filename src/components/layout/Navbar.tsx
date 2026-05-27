@@ -38,8 +38,22 @@ export function Navbar() {
            <span className="font-bold text-xl tracking-tight text-slate-900">HeyPixi</span>
         </Link>
 
-        {/* Desktop Nav - Cleaned up to match single page gamified flow */}
+        {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
+          {[
+            { label: "Demo", href: "#demo" },
+            { label: "Types", href: "#types" },
+            { label: "Onboard", href: "#onboard" },
+            { label: "Pricing", href: "#pricing" },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="text-sm font-semibold text-slate-600 hover:text-brand transition-colors tracking-wide"
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
 
         {/* CTAs */}

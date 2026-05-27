@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -26,7 +26,8 @@ import {
   RefreshCcw, 
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  PartyPopper
 } from "lucide-react"
 
 // Razorpay script loaded dynamically in render block
@@ -35,8 +36,6 @@ import {
 const PROBLEMS = [
   { id: "leads", emoji: "😤", text: "Not getting leads", color: "from-rose-500 to-orange-500" },
   { id: "repeated", emoji: "📞", text: "Too many repeated questions", color: "from-amber-500 to-yellow-500" },
-  { id: "converting", emoji: "🛍️", text: "Not converting visitors", color: "from-violet-500 to-fuchsia-500" },
-  { id: "automation", emoji: "🧾", text: "Need automation", color: "from-blue-500 to-indigo-500" },
 ]
 
 // Step 2 Question Database
@@ -79,23 +78,7 @@ const QUESTIONS_BY_PROBLEM: Record<string, {
       "Whoa! That's a massive productivity multiplier."
     ]
   },
-  "converting": {
-    questions: [
-      "What's the main reason visitors leave without buying/converting? 🛍️",
-      "Do you offer any incentive to hesitant buyers right now? 🎁",
-      "If Pixi could offer a custom discount to a user about to bounce, would that help? 💡"
-    ],
-    options: [
-      ["Confused by options", "Unsure about trust/price", "Just window shopping", "High checkout friction"],
-      ["None, we sell at retail", "A standard 10% discount", "Free shipping above limit", "Free consultation call"],
-      ["Yes, absolutely! 🚀", "Maybe, depending on items", "No, we prefer other methods"]
-    ],
-    replies: [
-      "Friction or product confusion kills sales.",
-      "An incentive is a great hook, let's make it smarter.",
-      "Exactly! Exit-intent conversational popups work like magic."
-    ]
-  },
+
   "automation": {
     questions: [
       "Which tool do you use the most that needs lead info? 🧾",
@@ -120,6 +103,73 @@ type ChatMsg = {
   id: number
   text: string
   sender: "bot" | "user"
+}
+
+function TypewriterText({ text, speed = 30 }: { text: string; speed?: number }) {
+  const [displayed, setDisplayed] = useState("")
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    setDisplayed("")
+    setDone(false)
+    let i = 0
+    const timer = setInterval(() => {
+      i++
+      setDisplayed(text.slice(0, i))
+      if (i >= text.length) {
+        clearInterval(timer)
+        setDone(true)
+      }
+    }, speed)
+    return () => clearInterval(timer)
+  }, [text, speed])
+
+  return (
+    <span>
+      {displayed}
+      {!done && <span className="animate-pulse ml-0.5 text-brand">|</span>}
+    </span>
+  )
+}
+
+function PixiMascot({ size = "sm", mood = "idle" }: { size?: "sm" | "md" | "lg"; mood?: "idle" | "thinking" | "happy" }) {
+  const sizeMap = { sm: "w-10 h-10 text-lg", md: "w-14 h-14 text-2xl", lg: "w-20 h-20 text-4xl" }
+  const moodAnim = mood === "thinking" ? "animate-pulse-soft" : mood === "happy" ? "animate-bounce" : "animate-float"
+  const emoji = mood === "thinking" ? "💭" : mood === "happy" ? "😊" : ""
+  return (
+    <div className="relative">
+      {emoji && (
+        <span className="absolute -top-2 -right-2 text-sm z-10 animate-bounce">{emoji}</span>
+      )}
+      <div className={`${sizeMap[size]} rounded-2xl bg-gradient-to-br from-brand to-sky-500 flex items-center justify-center shadow-lg shadow-brand/25 ${moodAnim}`}>
+        <span className="font-black tracking-tighter text-white drop-shadow-sm">P</span>
+      </div>
+    </div>
+  )
+}
+
+function FloatingParticles({ count = 6 }: { count?: number }) {
+  const particles = Array.from({ length: count }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: 2 + Math.random() * 4,
+    duration: 4 + Math.random() * 6,
+    delay: Math.random() * 4,
+  }))
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-brand/20"
+          style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size }}
+          animate={{ y: [0, -30, 0], opacity: [0, 0.6, 0] }}
+          transition={{ duration: p.duration, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}
+        />
+      ))}
+    </div>
+  )
 }
 
 export function GamifiedFlow() {
@@ -172,20 +222,16 @@ export function GamifiedFlow() {
     }
   }, [chatMessages, isBotTyping])
 
-  // Initialize chatbot messages when Step 3 is reached
+  // Initialize chatbot messages when Step 4 is reached
   useEffect(() => {
-    if (step === 3 && chatMessages.length === 0) {
+    if (step === 4 && chatMessages.length === 0) {
       setIsBotTyping(true)
       const timer = setTimeout(() => {
         let greeting = "Hi there! I'm your newly configured Pixi. 👋 "
         if (selectedProblem?.id === "leads") {
           greeting += "I'm primed and ready to capture high-value leads on your website! Shall we see how I qualify your visitors?"
-        } else if (selectedProblem?.id === "repeated") {
-          greeting += "I'm trained on your documents and ready to answering support questions 24/7. Want to see a quick test?"
-        } else if (selectedProblem?.id === "converting") {
-          greeting += "I'm set up with exit-intent intelligence to offer personalized discounts and save bouncing carts. Try chatting with me!"
         } else {
-          greeting += "I'm automated and ready to push qualified leads directly to your sheets and CRM. Let's test the capture flow!"
+          greeting += "I'm trained on your documents and ready to answering support questions 24/7. Want to see a quick test?"
         }
 
         setChatMessages([
@@ -428,7 +474,7 @@ Do not ask all questions in one large block; ask them conversational, short, and
 
   // Render content based on current Step state
   return (
-    <section className="py-24 md:py-32 relative overflow-hidden flex items-center justify-center min-h-[85vh]">
+    <section id="onboard" className="py-24 md:py-32 relative overflow-hidden flex items-center justify-center min-h-[85vh] scroll-mt-24">
       {/* Script tag to load Razorpay checkout */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
 
@@ -440,37 +486,39 @@ Do not ask all questions in one large block; ask them conversational, short, and
         
         {/* Step Indicator Header */}
         <div className="flex justify-center items-center gap-2 mb-12">
-          {[1, 2, 3, 5].map((s, index) => {
-            const displayStep = index + 1 // 1, 2, 3, 4
-            let isActive = false
-            let isCompleted = false
-            if (s === 5) {
-              isActive = step === 5
-              isCompleted = false
-            } else if (s === 3) {
-              isActive = step === 3
-              isCompleted = step > 3
-            } else {
-              isActive = step === s
-              isCompleted = step > s
-            }
+          {[
+            { step: 1, label: "Problem" },
+            { step: 2, label: "Impact" },
+            { step: 3, label: "Solution" },
+            { step: 4, label: "Demo" },
+            { step: 5, label: "Launch" },
+          ].map((s, index) => {
+            const isActive = step === s.step
+            const isCompleted = step > s.step
 
             return (
-              <div key={s} className="flex items-center">
-                <div 
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold font-mono transition-all duration-300 ${
-                    isActive 
-                      ? "bg-brand text-white shadow-lg shadow-brand/35 ring-4 ring-brand/20 scale-110" 
-                      : isCompleted 
-                        ? "bg-emerald-500 text-white" 
-                        : "bg-slate-100 border border-slate-200 text-slate-400"
-                  }`}
-                >
-                  {isCompleted ? <Check size={16} /> : displayStep}
+              <div key={s.step} className="flex items-center">
+                <div className="flex flex-col items-center gap-1">
+                  <div 
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold font-mono transition-all duration-300 ${
+                      isActive 
+                        ? "bg-brand text-white shadow-lg shadow-brand/35 ring-4 ring-brand/20 scale-110" 
+                        : isCompleted 
+                          ? "bg-emerald-500 text-white" 
+                          : "bg-slate-100 border border-slate-200 text-slate-400"
+                    }`}
+                  >
+                    {isCompleted ? <Check size={16} /> : index + 1}
+                  </div>
+                  <span className={`text-[10px] font-mono uppercase tracking-wider hidden sm:block ${
+                    isActive ? "text-brand font-bold" : isCompleted ? "text-emerald-600 font-bold" : "text-slate-400"
+                  }`}>
+                    {s.label}
+                  </span>
                 </div>
-                {index < 3 && (
-                  <div className={`h-1 w-10 md:w-16 mx-1 md:mx-2 rounded transition-all duration-500 ${
-                    step > s ? "bg-emerald-500" : "bg-slate-200"
+                {index < 4 && (
+                  <div className={`h-1 w-8 md:w-10 mx-1 md:mx-2 rounded transition-all duration-500 mt-[-18px] ${
+                    isCompleted ? "bg-emerald-500" : "bg-slate-200"
                   }`} />
                 )}
               </div>
@@ -486,11 +534,25 @@ Do not ask all questions in one large block; ask them conversational, short, and
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="text-center max-w-3xl mx-auto"
+              className="text-center max-w-3xl mx-auto relative"
             >
-              <div className="inline-flex items-center justify-center bg-brand-light text-brand px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
+              <FloatingParticles count={8} />
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                className="flex justify-center mb-4"
+              >
+                <PixiMascot size="lg" mood="happy" />
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="inline-flex items-center justify-center bg-brand-light text-brand px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6"
+              >
                 <Flame size={12} className="mr-1.5" /> Start Your Magic Onboarding
-              </div>
+              </motion.div>
               <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-none mb-4">
                 Let&apos;s Build Your <span className="text-gradient">Custom Bot</span>
               </h1>
@@ -498,21 +560,39 @@ Do not ask all questions in one large block; ask them conversational, short, and
                 What is the biggest operational challenge or friction point in your business right now?
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl mx-auto">
-                {PROBLEMS.map((prob) => (
-                  <button
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-xl mx-auto">
+                {PROBLEMS.map((prob, i) => (
+                  <motion.div
                     key={prob.id}
-                    onClick={() => handleProblemSelect(prob)}
-                    className="group relative flex flex-col items-center justify-center p-8 bg-white border border-slate-200 rounded-2xl text-slate-900 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-slate-200 hover:border-brand/40 overflow-hidden cursor-pointer"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 + i * 0.15, type: "spring", stiffness: 150 }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                   >
-                    <div className="text-4xl mb-4 transform transition-transform duration-300 group-hover:scale-120 group-hover:rotate-6">
-                      {prob.emoji}
-                    </div>
-                    <span className="font-bold text-sm tracking-tight text-slate-800 uppercase font-mono max-w-[200px] text-center">
-                      {prob.text}
-                    </span>
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 from-brand to-brand-accent" />
-                  </button>
+                    <button
+                      onClick={() => handleProblemSelect(prob)}
+                      className="group relative flex flex-col items-center justify-center p-8 w-full bg-white border border-slate-200 rounded-2xl text-slate-900 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-slate-200 hover:border-brand/40 overflow-hidden cursor-pointer"
+                    >
+                      <motion.div 
+                        className="text-4xl mb-4"
+                        whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.2 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {prob.emoji}
+                      </motion.div>
+                      <span className="font-bold text-sm tracking-tight text-slate-800 uppercase font-mono max-w-[200px] text-center">
+                        {prob.text}
+                      </span>
+                      <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 from-brand to-brand-accent" />
+                      <motion.div 
+                        className="absolute inset-0 bg-gradient-to-r from-brand/5 to-transparent pointer-events-none"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                    </button>
+                  </motion.div>
                 ))}
               </div>
             </motion.div>
@@ -522,48 +602,63 @@ Do not ask all questions in one large block; ask them conversational, short, and
           {step === 2 && selectedProblem && (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ type: "spring", stiffness: 200, damping: 25 }}
               className="max-w-2xl mx-auto"
             >
+              <FloatingParticles count={4} />
               <div className="glass-card rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden border border-slate-200 bg-white">
                 
-                {/* Robot Icon mascot */}
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-14 h-14 rounded-2xl bg-brand text-white flex items-center justify-center shadow-lg shadow-brand/20">
-                    <Bot size={28} className="animate-float" />
-                  </div>
+                {/* Pixi Mascot */}
+                <motion.div 
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex items-center gap-4 mb-8"
+                >
+                  <PixiMascot size="md" mood={pixiReply ? "happy" : "thinking"} />
                   <div>
                     <h3 className="font-extrabold text-slate-900 text-lg uppercase tracking-wider font-mono">Pixi Personalizer</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest font-mono">Adapting Tone...</span>
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest font-mono">
+                        {pixiReply ? "Got it! 😊" : "Thinking..."}
+                      </span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Speech bubbles */}
                 <div className="space-y-6 mb-8">
-                  <div className="bg-slate-100 text-slate-800 p-5 rounded-2xl rounded-tl-none border border-slate-200 text-base md:text-lg font-medium leading-relaxed max-w-[90%]">
-                    Got it. I can fix <span className="font-extrabold text-brand uppercase">{selectedProblem.text}</span> for you in 2 mins. 😺🚀
-                  </div>
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3, type: "spring" }}
+                    className="bg-slate-100 text-slate-800 p-5 rounded-2xl rounded-tl-none border border-slate-200 text-base md:text-lg font-medium leading-relaxed max-w-[90%]"
+                  >
+                    <TypewriterText text={`Got it. I can fix ${selectedProblem.text} for you in 2 mins. 😺🚀`} speed={20} />
+                  </motion.div>
 
                   {pixiReply ? (
                     <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200 }}
                       className="bg-brand text-white p-5 rounded-2xl rounded-tl-none text-base md:text-lg font-medium shadow-md shadow-brand/10 max-w-[90%]"
                     >
-                      {pixiReply}
+                      <TypewriterText text={pixiReply} speed={15} />
                     </motion.div>
                   ) : (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      key={questionIndex}
+                      initial={{ opacity: 0, y: 15, x: -10 }}
+                      animate={{ opacity: 1, y: 0, x: 0 }}
+                      transition={{ delay: 0.5, type: "spring", stiffness: 150 }}
                       className="bg-slate-50 border border-slate-100 text-slate-800 p-5 rounded-2xl rounded-tl-none text-base md:text-lg font-bold max-w-[90%]"
                     >
-                      {QUESTIONS_BY_PROBLEM[selectedProblem.id].questions[questionIndex]}
+                      <TypewriterText text={QUESTIONS_BY_PROBLEM[selectedProblem.id].questions[questionIndex]} speed={25} />
                     </motion.div>
                   )}
                 </div>
@@ -571,19 +666,33 @@ Do not ask all questions in one large block; ask them conversational, short, and
                 {/* Option Pill Buttons */}
                 {!pixiReply && (
                   <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2 }}
                     className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
                     {QUESTIONS_BY_PROBLEM[selectedProblem.id].options[questionIndex].map((opt, i) => (
-                      <button
+                      <motion.div
                         key={i}
-                        onClick={() => handleAnswerSelect(opt)}
-                        className="py-4 px-6 border-2 border-slate-100 bg-slate-50 hover:bg-brand-light hover:border-brand hover:text-brand font-bold text-sm text-slate-800 rounded-xl transition-all hover:scale-102 flex items-center justify-between group cursor-pointer text-left"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.3 + i * 0.1 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
                       >
-                        <span>{opt}</span>
-                        <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity translate-x-[-4px] group-hover:translate-x-0 duration-200" />
-                      </button>
+                        <button
+                          onClick={() => handleAnswerSelect(opt)}
+                          className="py-4 px-6 w-full border-2 border-slate-100 bg-slate-50 hover:bg-brand-light hover:border-brand hover:text-brand font-bold text-sm text-slate-800 rounded-xl transition-all flex items-center justify-between group cursor-pointer text-left"
+                        >
+                          <span>{opt}</span>
+                          <motion.div
+                            initial={{ opacity: 0, x: -4 }}
+                            whileHover={{ opacity: 1, x: 0 }}
+                          >
+                            <ArrowRight size={14} />
+                          </motion.div>
+                        </button>
+                      </motion.div>
                     ))}
                   </motion.div>
                 )}
@@ -591,11 +700,13 @@ Do not ask all questions in one large block; ask them conversational, short, and
                 {/* Progress dot indicator inside card */}
                 <div className="flex gap-1.5 justify-end items-center mt-8">
                   {[0, 1, 2].map((idx) => (
-                    <div 
+                    <motion.div 
                       key={idx}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        idx === questionIndex ? "w-6 bg-brand" : idx < questionIndex ? "w-1.5 bg-emerald-500" : "w-1.5 bg-slate-200"
-                      }`}
+                      animate={{ 
+                        width: idx === questionIndex ? 24 : idx < questionIndex ? 6 : 6,
+                        backgroundColor: idx === questionIndex ? "#3B82F6" : idx < questionIndex ? "#10B981" : "#E2E8F0"
+                      }}
+                      className="h-1.5 rounded-full"
                     />
                   ))}
                 </div>
@@ -604,8 +715,149 @@ Do not ask all questions in one large block; ask them conversational, short, and
             </motion.div>
           )}
 
-          {/* STEP 3 & 4: INSTANT DEMO & REVEAL VALUE */}
+          {/* STEP 3: OUR SOLUTION */}
           {step === 3 && selectedProblem && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -30, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 150, damping: 20 }}
+              className="max-w-3xl mx-auto text-center"
+            >
+              <FloatingParticles count={10} />
+              <div className="glass-card rounded-3xl p-8 md:p-12 shadow-2xl border border-slate-200 bg-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-brand/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
+
+                <motion.div 
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                  className="flex justify-center mb-6"
+                >
+                  <PixiMascot size="lg" mood="happy" />
+                </motion.div>
+
+                <motion.h2 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-4"
+                >
+                  Here&apos;s Our <span className="text-gradient">Solution</span>
+                </motion.h2>
+
+                <div className="max-w-xl mx-auto space-y-6 text-left">
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5, type: "spring", stiffness: 150 }}
+                    className="bg-brand-light/50 rounded-2xl p-6 border border-brand/10"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-2xl">{selectedProblem.emoji}</span>
+                      <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">Problem</div>
+                        <div className="font-bold text-slate-900">{selectedProblem.text}</div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {selectedProblem.id === "leads"
+                        ? "You're missing out on potential customers who visit your site but leave without sharing their details."
+                        : "Your team spends hours answering the same questions daily instead of focusing on high-value work."}
+                    </p>
+                  </motion.div>
+
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7, type: "spring", stiffness: 150 }}
+                    className="bg-slate-50 rounded-2xl p-6 border border-slate-200"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-2xl">📊</span>
+                      <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">Impact</div>
+                        <div className="font-bold text-slate-900">What this costs you</div>
+                      </div>
+                    </div>
+                    <ul className="space-y-2 text-sm text-slate-600">
+                      {selectedProblem.id === "leads" ? (
+                        <>
+                          <li className="flex items-start gap-2">• Lost revenue from unqualified or missed leads</li>
+                          <li className="flex items-start gap-2">• Manual follow-up eats your team&apos;s time</li>
+                          <li className="flex items-start gap-2">• No data on who your hottest prospects are</li>
+                        </>
+                      ) : (
+                        <>
+                          <li className="flex items-start gap-2">• Support tickets pile up, response time slows down</li>
+                          <li className="flex items-start gap-2">• Your team is burned out from copy-paste answers</li>
+                          <li className="flex items-start gap-2">• Customers get frustrated waiting for help</li>
+                        </>
+                      )}
+                    </ul>
+                  </motion.div>
+
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.9, type: "spring", stiffness: 150 }}
+                    className="bg-gradient-to-r from-brand/10 to-sky-500/10 rounded-2xl p-6 border border-brand/20"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <PixiMascot size="sm" mood="idle" />
+                      <div>
+                        <div className="text-xs font-bold text-brand uppercase tracking-widest font-mono">Pixi Solution</div>
+                        <div className="font-bold text-slate-900">How we fix it</div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                      {selectedProblem.id === "leads"
+                        ? `A dedicated Pixi Sales Agent that greets your visitors, asks qualifying questions, and captures every lead's Name, Phone & Requirement — then pushes it straight to your CRM or inbox.`
+                        : `A Pixi Support Agent trained on your FAQs and docs that answers 80% of repetitive questions instantly — so your team only handles the complex ones.`}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="text-xs font-bold px-3 py-1.5 bg-white rounded-full border border-brand/20 text-brand">
+                        {selectedProblem.id === "leads" ? "🎯 Lead Capture" : "🤖 24/7 Support"}
+                      </span>
+                      <span className="text-xs font-bold px-3 py-1.5 bg-white rounded-full border border-brand/20 text-brand">
+                        {selectedProblem.id === "leads" ? "📥 CRM Sync" : "📚 Auto-Trained"}
+                      </span>
+                      <span className="text-xs font-bold px-3 py-1.5 bg-white rounded-full border border-brand/20 text-brand">
+                        ⚡ No Code
+                      </span>
+                    </div>
+                  </motion.div>
+                </div>
+
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.2 }}
+                  className="mt-10"
+                >
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      onClick={() => setStep(4)}
+                      className="bg-brand text-white font-extrabold shadow-lg shadow-brand/20 rounded-full px-10 h-14 text-base group"
+                    >
+                      Try the Demo 
+                      <motion.div
+                        animate={{ x: [0, 5, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <ArrowRight size={18} className="ml-2" />
+                      </motion.div>
+                    </Button>
+                  </motion.div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 4: INSTANT DEMO & REVEAL VALUE */}
+          {step === 4 && selectedProblem && (
             <motion.div
               key="step3"
               initial={{ opacity: 0, y: 25 }}
@@ -631,9 +883,7 @@ Do not ask all questions in one large block; ask them conversational, short, and
                     {/* Chat Header */}
                     <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-brand text-white flex items-center justify-center rounded-xl shadow-md shadow-brand/10">
-                          <Bot size={20} />
-                        </div>
+                        <PixiMascot size="sm" />
                         <div>
                           <h4 className="font-extrabold text-slate-900 text-sm font-mono tracking-wide uppercase">My Pixi Agent</h4>
                           <div className="flex items-center gap-1">
@@ -823,225 +1073,107 @@ Do not ask all questions in one large block; ask them conversational, short, and
           {step === 5 && selectedProblem && (
             <motion.div
               key="step5"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -20 }}
+              transition={{ type: "spring", stiffness: 150, damping: 20 }}
               className="max-w-2xl mx-auto"
             >
-              <div className="glass-card rounded-3xl p-8 md:p-12 shadow-2xl border border-slate-200 bg-white">
+              <FloatingParticles count={12} />
+              <div className="glass-card rounded-3xl p-8 md:p-12 shadow-2xl border border-slate-200 bg-white relative overflow-hidden">
                 
                 {/* Header info */}
                 {!selectedPlan ? (
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-brand-light text-brand rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md shadow-brand/5">
-                      <Sparkles size={32} />
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">Want Pixi on your website? 😺</h2>
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                      className="flex justify-center mb-6"
+                    >
+                      <PixiMascot size="lg" mood="happy" />
+                    </motion.div>
+                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">Get Pixi on Your Website 😺</h2>
                     <p className="text-slate-600 text-base max-w-md mx-auto mb-10">
-                      Your customized bot is generated. Choose your hosting option below to claim your Pixi!
+                      Your customized bot is ready. One-time payment. Lifetime access.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-stretch max-w-lg mx-auto">
+                    <div className="max-w-sm mx-auto">
                       
                       {/* Premium Option */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, type: "spring", stiffness: 150 }}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                      >
                       <button
                         onClick={() => setSelectedPlan("premium")}
-                        className="group relative flex flex-col justify-between p-6 bg-gradient-to-b from-slate-900 to-black text-white rounded-2xl text-left shadow-xl hover:-translate-y-1 hover:shadow-brand/25 transition-all border border-slate-800 duration-300 cursor-pointer overflow-hidden"
+                        className="group relative flex flex-col justify-between p-8 bg-white text-slate-900 rounded-2xl text-left shadow-xl border-2 border-brand hover:-translate-y-1 hover:shadow-brand/25 transition-all duration-300 cursor-pointer overflow-hidden w-full"
                       >
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-brand/20 rounded-full blur-2xl pointer-events-none" />
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
                         <div>
-                          <span className="bg-brand text-white px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider font-mono">Premium</span>
-                          <h4 className="font-extrabold text-xl mt-3 tracking-tight">Activate Pixi</h4>
-                          <p className="text-slate-400 text-xs leading-relaxed mt-2">
-                            One-time payment for lifetime hosting, unlimited leads, and full API config access.
+                          <span className="bg-brand text-white px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider font-mono">One-Time</span>
+                          <h4 className="font-extrabold text-2xl mt-3 tracking-tight">Activate Pixi</h4>
+                          <p className="text-slate-500 text-sm leading-relaxed mt-2">
+                            Lifetime hosting, unlimited leads, full API config access.
                           </p>
                         </div>
                         <div className="mt-8 flex items-baseline gap-1.5">
-                          <span className="text-3xl font-black tracking-tight">₹999</span>
+                          <span className="text-4xl font-black tracking-tight">₹2,000</span>
                           <span className="text-slate-400 text-xs font-mono">one-time</span>
                         </div>
-                        <div className="mt-6 w-full py-2.5 bg-brand text-white rounded-xl text-center text-xs font-extrabold tracking-wider uppercase group-hover:scale-[1.03] transition-transform">
-                          🚀 Go Premium
+                        <div className="mt-6 w-full py-3 bg-brand text-white rounded-xl text-center text-sm font-extrabold tracking-wider uppercase group-hover:scale-[1.03] transition-transform shadow-lg shadow-brand/20">
+                          🚀 Get Pixi
                         </div>
                       </button>
-
-                      {/* Trial Option */}
-                      <button
-                        onClick={() => setSelectedPlan("free")}
-                        className="group flex flex-col justify-between p-6 bg-white text-slate-900 rounded-2xl text-left border border-slate-200 hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-200 transition-all duration-300 cursor-pointer overflow-hidden"
-                      >
-                        <div>
-                          <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider font-mono">Free</span>
-                          <h4 className="font-extrabold text-xl mt-3 tracking-tight">Try More First</h4>
-                          <p className="text-slate-500 text-xs leading-relaxed mt-2">
-                            14-day free access to test bot qualifications with a limit of 50 conversations.
-                          </p>
-                        </div>
-                        <div className="mt-8 flex items-baseline gap-1.5">
-                          <span className="text-3xl font-black text-slate-800 tracking-tight">₹0</span>
-                          <span className="text-slate-400 text-xs font-mono">/ 14 days</span>
-                        </div>
-                        <div className="mt-6 w-full py-2.5 bg-slate-900 text-white rounded-xl text-center text-xs font-extrabold tracking-wider uppercase group-hover:bg-brand transition-colors">
-                          🎁 Try Free
-                        </div>
-                      </button>
+                      </motion.div>
 
                     </div>
                   </div>
                 ) : (
-                  <div>
+                  <div className="text-center">
                     {/* Return link to adjust plans */}
                     <button 
                       onClick={() => {
                         setSelectedPlan(null)
                         setAuthError("")
                       }} 
-                      className="text-xs font-bold text-slate-400 hover:text-brand flex items-center gap-1.5 mb-6 uppercase tracking-wider font-mono"
+                      className="text-xs font-bold text-slate-400 hover:text-brand flex items-center gap-1.5 mb-6 uppercase tracking-wider font-mono mx-auto"
                     >
                       ← Switch Plan
                     </button>
 
-                    {/* Confetti or payment verification block */}
-                    {checkoutComplete ? (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                          <CheckCircle2 size={36} />
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Payment Verified!</h2>
-                        <p className="text-slate-500 text-sm leading-relaxed mt-2 max-w-sm mx-auto">
-                          Congratulations! Your Pixi has been activated and saved. We are preparing your admin dashboard workspace...
-                        </p>
-                        <Loader2 className="animate-spin text-brand w-6 h-6 mx-auto mt-8" />
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="max-w-md mx-auto"
+                    >
+                      <div className="w-16 h-16 bg-brand-light text-brand rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <Sparkles size={32} />
                       </div>
-                    ) : (
-                      <div>
-                        {/* Auth Form (Inline signup/signin) */}
-                        <div className="text-center mb-8">
-                          <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-                            {isAuthMode === "signup" ? "Claim Your Custom Pixi" : "Log In to Claim Pixi"}
-                          </h3>
-                          <p className="text-slate-500 text-sm mt-1 leading-relaxed">
-                            {isAuthMode === "signup" 
-                              ? `Create your account to secure your bot under the ${selectedPlan === "premium" ? "Premium (₹999)" : "14-day Free"} plan.` 
-                              : "Enter your account credentials to bind your brand new bot configuration."
-                            }
-                          </p>
-                        </div>
-
-                        {authError && (
-                          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-medium rounded-xl text-center leading-relaxed">
-                            {authError}
-                          </div>
-                        )}
-
-                        <form onSubmit={handleAuthSubmit} className="space-y-4 max-w-md mx-auto">
-                          {isAuthMode === "signup" && (
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1.5">Full Name</label>
-                              <div className="relative">
-                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                <input
-                                  type="text"
-                                  required
-                                  value={authName}
-                                  onChange={(e) => setAuthName(e.target.value)}
-                                  placeholder="John Doe"
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 text-slate-800"
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1.5">Email Address</label>
-                            <div className="relative">
-                              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                              <input
-                                type="email"
-                                required
-                                value={authEmail}
-                                onChange={(e) => setAuthEmail(e.target.value)}
-                                placeholder="name@company.com"
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 text-slate-800"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono mb-1.5">Password</label>
-                            <div className="relative">
-                              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                              <input
-                                type={showPassword ? "text" : "password"}
-                                required
-                                value={authPassword}
-                                onChange={(e) => setAuthPassword(e.target.value)}
-                                placeholder={isAuthMode === "signup" ? "Min. 8 chars, 1 number" : "••••••••"}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 text-slate-800"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                              >
-                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <Button
-                            type="submit"
-                            disabled={authLoading || processingPayment}
-                            className="w-full bg-brand text-white font-extrabold h-12 shadow-lg shadow-brand/20 mt-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            {authLoading || processingPayment ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                {processingPayment ? "Launching Payment..." : "Provisioning Account..."}
-                              </>
-                            ) : (
-                              <>
-                                {isAuthMode === "signup" ? "Create Account & Claim Pixi" : "Log In & Claim Pixi"}
-                                <ArrowRight size={16} />
-                              </>
-                            )}
-                          </Button>
-                        </form>
-
-                        <div className="mt-8 text-center text-sm font-semibold text-slate-500 font-mono">
-                          {isAuthMode === "signup" ? (
-                            <span>
-                              Already have an account?{" "}
-                              <button 
-                                onClick={() => {
-                                  setIsAuthMode("signin")
-                                  setAuthError("")
-                                  setShowPassword(false)
-                                }} 
-                                className="text-brand font-bold hover:underline"
-                              >
-                                Log In
-                              </button>
-                            </span>
-                          ) : (
-                            <span>
-                              Don&apos;t have an account?{" "}
-                              <button 
-                                onClick={() => {
-                                  setIsAuthMode("signup")
-                                  setAuthError("")
-                                  setShowPassword(false)
-                                }} 
-                                className="text-brand font-bold hover:underline"
-                              >
-                                Sign Up
-                              </button>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
+                      <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-2">
+                        Get Pixi for ₹2,000
+                      </h3>
+                      <p className="text-slate-500 text-sm mb-8 max-w-sm mx-auto">
+                        Create your account and activate your bot with lifetime access.
+                      </p>
+                      <Button
+                        onClick={() => router.push("/auth/signup")}
+                        className="bg-brand text-white font-extrabold h-14 px-10 shadow-lg shadow-brand/20 rounded-full text-base"
+                      >
+                        Create Account & Continue
+                        <ArrowRight size={18} className="ml-2" />
+                      </Button>
+                      <p className="text-xs text-slate-400 mt-4">
+                        Already have an account?{" "}
+                        <button onClick={() => router.push("/auth/signin")} className="text-brand font-bold hover:underline">
+                          Log In
+                        </button>
+                      </p>
+                    </motion.div>
                   </div>
                 )}
 
