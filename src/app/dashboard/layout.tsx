@@ -1,9 +1,15 @@
 import { auth } from "@/auth";
 import Link from "next/link";
-import { Bot, User } from "lucide-react";
+import { Bot, User as UserIcon } from "lucide-react";
 import { SignOutButton } from "@/components/dashboard/SignOutButton";
 import { SidebarNav } from "@/components/dashboard/SidebarNav";
 import { MobileNav } from "@/components/dashboard/MobileNav";
+import { WorkspaceSwitcher, type WorkspaceOption } from "@/components/dashboard/WorkspaceSwitcher";
+import dbConnect from "@/lib/mongodb";
+import mongoose from "mongoose";
+import { cookies } from "next/headers";
+
+const WORKSPACE_COOKIE = "activeWorkspace";
 
 export default async function DashboardLayout({
   children,
@@ -11,6 +17,95 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
+
+  let workspaces: WorkspaceOption[] = [];
+  let activeWorkspaceId = "personal";
+
+  if (session?.user?.email) {
+    await dbConnect();
+    
+    const db = mongoose.connection.db;
+    if (db) {
+      const usersCol = db.collection("users");
+      const invitesCol = db.collection("projectinvites");
+      
+      const dbUser = await usersCol.findOne({ email: session.user.email });
+      if (dbUser) {
+        // Self-heal legacy database entries
+        const fieldsToSet: Record<string, unknown> = {};
+        if (!dbUser.role) fieldsToSet.role = "admin";
+        if (dbUser.tokenUsage === undefined) fieldsToSet.tokenUsage = 0;
+        if (!dbUser.tokenLimit) fieldsToSet.tokenLimit = 100;
+        if (!dbUser.subscriptionPlan) fieldsToSet.subscriptionPlan = "free";
+        if (!dbUser.subscriptionStatus) fieldsToSet.subscriptionStatus = "active";
+
+        // Check for workspace invitation if they don't have a parentId yet
+        if (!dbUser.parentId) {
+          const pendingInvite = await invitesCol.findOne({
+            email: (dbUser.email as string).toLowerCase().trim(),
+            status: { $in: ["pending", "accepted"] },
+          });
+          if (pendingInvite) {
+            fieldsToSet.parentId = pendingInvite.ownerId;
+            fieldsToSet.role = pendingInvite.role;
+            await invitesCol.updateOne(
+              { _id: pendingInvite._id },
+              { $set: { status: "accepted" } }
+            );
+            console.log(`[Invites] Applied pending invite for ${dbUser.email} -> Role: ${pendingInvite.role}, Workspace owner: ${pendingInvite.ownerId}`);
+          }
+        }
+
+        if (Object.keys(fieldsToSet).length > 0) {
+          await usersCol.updateOne({ _id: dbUser._id }, { $set: fieldsToSet });
+          Object.assign(dbUser, fieldsToSet);
+        }
+
+        // Build workspace options
+        workspaces.push({
+          id: "personal",
+          label: "Personal Workspace",
+          sublabel: `${dbUser.name || "My"}'s own bots & data`,
+          isPersonal: true,
+        });
+
+        // If user is invited to another workspace, add that option
+        const effectiveParentId = dbUser.parentId;
+        if (effectiveParentId) {
+          try {
+            const ownerObjectId = typeof effectiveParentId === "string" 
+              ? new mongoose.Types.ObjectId(effectiveParentId) 
+              : effectiveParentId;
+
+            const ownerUser = await usersCol.findOne({ _id: ownerObjectId });
+            if (ownerUser) {
+              workspaces.push({
+                id: effectiveParentId.toString(),
+                label: `${ownerUser.name}'s Workspace`,
+                sublabel: `Role: ${(dbUser.role as string || "viewer").charAt(0).toUpperCase() + (dbUser.role as string || "viewer").slice(1)}`,
+                isPersonal: false,
+              });
+            }
+          } catch (e) {
+            console.error("Invalid effectiveParentId:", e);
+          }
+        }
+
+        // Read cookie to determine active workspace
+        const cookieStore = await cookies();
+        const cookiePref = cookieStore.get(WORKSPACE_COOKIE)?.value;
+        
+        if (cookiePref && cookiePref !== "personal" && effectiveParentId && cookiePref === effectiveParentId.toString()) {
+          activeWorkspaceId = cookiePref;
+        } else if (!cookiePref && effectiveParentId) {
+          // Default: if user has a parentId and no cookie set, default to invited workspace
+          activeWorkspaceId = effectiveParentId.toString();
+        } else {
+          activeWorkspaceId = "personal";
+        }
+      }
+    }
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
@@ -25,6 +120,12 @@ export default async function DashboardLayout({
           </Link>
         </div>
 
+        {/* Workspace Switcher */}
+        <WorkspaceSwitcher
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+        />
+
         <SidebarNav />
 
         <div className="p-4 border-t border-slate-200 flex items-center gap-3">
@@ -33,7 +134,7 @@ export default async function DashboardLayout({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={session.user.image} alt="User" className="w-full h-full object-cover" />
                 ) : (
-                    <User size={16} />
+                    <UserIcon size={16} />
                 )}
             </div>
             <div className="flex-1 min-w-0">

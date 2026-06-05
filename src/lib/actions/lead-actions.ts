@@ -18,11 +18,19 @@ export async function updateLeadStatus(leadId: string, status: ILead["status"]) 
         const dbUser = await User.findOne({ email: session.user.email });
         if (!dbUser) throw new NotFoundError("User not found");
 
+        const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+        const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
+        // Enforce RBAC
+        if (effectiveRole === "viewer") {
+            throw new UnauthorizedError("Unauthorized: Viewers cannot update lead status.");
+        }
+
         // Verify the lead belongs to a bot owned by this user
         const lead = await Lead.findById(leadId);
         if (!lead) throw new NotFoundError("Lead not found");
 
-        const bot = await BotConfig.findOne({ _id: lead.botId, userId: dbUser._id });
+        const bot = await BotConfig.findOne({ _id: lead.botId, userId: ownerId });
         if (!bot) throw new UnauthorizedError("Unauthorized access to this lead");
 
         lead.status = status;

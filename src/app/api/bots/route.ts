@@ -36,8 +36,16 @@ export async function POST(req: Request) {
         });
     }
 
+    const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+    const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
+    // Enforce RBAC
+    if (effectiveRole === "viewer") {
+        return NextResponse.json({ error: "Unauthorized: Viewers cannot create agents" }, { status: 403 });
+    }
+
     // Enforce bot limit per user
-    const existingBotCount = await BotConfig.countDocuments({ userId: dbUser._id });
+    const existingBotCount = await BotConfig.countDocuments({ userId: ownerId });
     if (existingBotCount >= LIMITS.MAX_BOTS_PER_USER) {
       return NextResponse.json(
         { error: `You've reached the maximum number of bots (${LIMITS.MAX_BOTS_PER_USER}).` },
@@ -47,7 +55,7 @@ export async function POST(req: Request) {
 
     // Create the bot (isActive=false by default, requires payment)
     const newBot = await BotConfig.create({
-      userId: dbUser._id,
+      userId: ownerId,
       name: name.trim().substring(0, LIMITS.MAX_NAME_LENGTH),
       role: role.trim(),
       url: url?.trim() || "",

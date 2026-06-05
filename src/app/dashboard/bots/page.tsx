@@ -20,7 +20,9 @@ export default async function BotsPage() {
     });
   }
 
-  const bots = await BotConfig.find({ userId: dbUser._id }).sort({ createdAt: -1 });
+  const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+  const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+  const bots = await BotConfig.find({ userId: ownerId }).sort({ createdAt: -1 });
 
   return (
     <div className="max-w-5xl">
@@ -29,12 +31,14 @@ export default async function BotsPage() {
                 <h2 className="text-2xl font-bold text-slate-900">Your AI Agents</h2>
                 <p className="text-slate-500 mt-1">Manage your deployed chatbots and deploy new ones.</p>
             </div>
-            <Link href="/dashboard/bots/new">
-                <Button className="bg-brand hover:bg-brand-dark text-white rounded-lg shadow-sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Agent
-                </Button>
-            </Link>
+            {effectiveRole !== "viewer" && (
+                <Link href="/dashboard/bots/new">
+                    <Button className="bg-brand hover:bg-brand-dark text-white rounded-lg shadow-sm">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Agent
+                    </Button>
+                </Link>
+            )}
        </div>
 
        {bots.length === 0 ? (
@@ -44,9 +48,13 @@ export default async function BotsPage() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">No agents found</h3>
                 <p className="text-slate-500 mb-6 max-w-md mx-auto">You haven&apos;t created any AI agents yet. Start by creating a custom agent trained on your website data.</p>
-                <Link href="/dashboard/bots/new">
-                    <Button className="bg-brand hover:bg-brand-dark">Create Your First Agent</Button>
-                </Link>
+                {effectiveRole !== "viewer" ? (
+                    <Link href="/dashboard/bots/new">
+                        <Button className="bg-brand hover:bg-brand-dark">Create Your First Agent</Button>
+                    </Link>
+                ) : (
+                    <p className="text-slate-500 text-sm font-semibold italic">Viewer accounts do not have permission to create AI agents.</p>
+                )}
            </div>
        ) : (
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

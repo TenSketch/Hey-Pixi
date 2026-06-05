@@ -16,8 +16,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       return <div>Please create an account first.</div>;
   }
 
+  const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+  const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
   // Find bots for this user to filter leads if needed
-  const userBots = await BotConfig.find({ userId: dbUser._id });
+  const userBots = await BotConfig.find({ userId: ownerId });
   const botIds = userBots.map(b => b._id);
 
   const filterParam = await searchParams;
@@ -79,7 +82,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 <p className="text-slate-500">When your AI agents capture phone numbers or emails, they will appear here.</p>
             </div>
         ) : (
-            <LeadsTable data={serializedLeads} />
+            <LeadsTable data={serializedLeads} userRole={effectiveRole} />
         )}
     </div>
   );

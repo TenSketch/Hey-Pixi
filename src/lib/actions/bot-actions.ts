@@ -40,14 +40,22 @@ export async function createBot(data: {
             });
         }
 
+        const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+        const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
+        // Enforce RBAC
+        if (effectiveRole === "viewer") {
+            throw new UnauthorizedError("Unauthorized: Viewers cannot create agents.");
+        }
+
         // Enforce bot limit per user
-        const existingBotCount = await BotConfig.countDocuments({ userId: dbUser._id });
+        const existingBotCount = await BotConfig.countDocuments({ userId: ownerId });
         if (existingBotCount >= LIMITS.MAX_BOTS_PER_USER) {
             throw new BadRequestError(`You've reached the maximum number of bots (${LIMITS.MAX_BOTS_PER_USER}).`);
         }
 
         const newBot = await BotConfig.create({
-            userId: dbUser._id,
+            userId: ownerId,
             name: name.trim().substring(0, LIMITS.MAX_NAME_LENGTH),
             role: role.trim(),
             url: url?.trim() || "",
@@ -83,7 +91,15 @@ export async function deleteBot(botId: string) {
         const dbUser = await User.findOne({ email: session.user.email });
         if (!dbUser) throw new NotFoundError("User not found");
 
-        const result = await BotConfig.deleteOne({ _id: botId, userId: dbUser._id });
+        const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+        const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
+        // Enforce RBAC
+        if (effectiveRole !== "admin") {
+            throw new UnauthorizedError("Unauthorized: Only Admins can delete agents.");
+        }
+
+        const result = await BotConfig.deleteOne({ _id: botId, userId: ownerId });
         
         if (result.deletedCount === 0) {
             throw new NotFoundError("Bot not found or unauthorized");
@@ -117,8 +133,16 @@ export async function updateBotSettings(botId: string, data: Record<string, any>
         const dbUser = await User.findOne({ email: session.user.email });
         if (!dbUser) throw new NotFoundError("User not found");
 
+        const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+        const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
+        // Enforce RBAC
+        if (effectiveRole === "viewer") {
+            throw new UnauthorizedError("Unauthorized: Viewers cannot configure settings.");
+        }
+
         const bot = await BotConfig.findOneAndUpdate(
-            { _id: botId, userId: dbUser._id },
+            { _id: botId, userId: ownerId },
             { $set: data },
             { new: true }
         );

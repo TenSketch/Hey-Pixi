@@ -1082,100 +1082,35 @@ Do not ask all questions in one large block; ask them conversational, short, and
               <FloatingParticles count={12} />
               <div className="glass-card rounded-3xl p-8 md:p-12 shadow-2xl border border-slate-200 bg-white relative overflow-hidden">
                 
-                {/* Header info */}
-                {!selectedPlan ? (
-                  <div className="text-center">
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                      className="flex justify-center mb-6"
-                    >
-                      <PixiMascot size="lg" mood="happy" />
-                    </motion.div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">Get Pixi on Your Website 😺</h2>
-                    <p className="text-slate-600 text-base max-w-md mx-auto mb-10">
-                      Your customized bot is ready. One-time payment. Lifetime access.
-                    </p>
+                <div className="text-center">
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                    className="flex justify-center mb-6"
+                  >
+                    <PixiMascot size="lg" mood="happy" />
+                  </motion.div>
+                  <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">Your Pixi is Ready! 😺</h2>
+                  <p className="text-slate-600 text-base max-w-md mx-auto mb-10">
+                    Your customized bot has been created. Log in to your dashboard to configure and deploy it to your website.
+                  </p>
 
-                    <div className="max-w-sm mx-auto">
-                      
-                      {/* Premium Option */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5, type: "spring", stiffness: 150 }}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                      >
-                      <button
-                        onClick={() => setSelectedPlan("premium")}
-                        className="group relative flex flex-col justify-between p-8 bg-white text-slate-900 rounded-2xl text-left shadow-xl border-2 border-brand hover:-translate-y-1 hover:shadow-brand/25 transition-all duration-300 cursor-pointer overflow-hidden w-full"
-                      >
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
-                        <div>
-                          <span className="bg-brand text-white px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider font-mono">One-Time</span>
-                          <h4 className="font-extrabold text-2xl mt-3 tracking-tight">Activate Pixi</h4>
-                          <p className="text-slate-500 text-sm leading-relaxed mt-2">
-                            Lifetime hosting, unlimited leads, full API config access.
-                          </p>
-                        </div>
-                        <div className="mt-8 flex items-baseline gap-1.5">
-                          <span className="text-4xl font-black tracking-tight">₹2,000</span>
-                          <span className="text-slate-400 text-xs font-mono">one-time</span>
-                        </div>
-                        <div className="mt-6 w-full py-3 bg-brand text-white rounded-xl text-center text-sm font-extrabold tracking-wider uppercase group-hover:scale-[1.03] transition-transform shadow-lg shadow-brand/20">
-                          🚀 Get Pixi
-                        </div>
-                      </button>
-                      </motion.div>
-
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    {/* Return link to adjust plans */}
-                    <button 
-                      onClick={() => {
-                        setSelectedPlan(null)
-                        setAuthError("")
-                      }} 
-                      className="text-xs font-bold text-slate-400 hover:text-brand flex items-center gap-1.5 mb-6 uppercase tracking-wider font-mono mx-auto"
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, type: "spring", stiffness: 150 }}
+                    className="max-w-md mx-auto"
+                  >
+                    <Button
+                      onClick={() => router.push("/auth/signin")}
+                      className="bg-brand text-white font-extrabold h-14 px-10 shadow-lg shadow-brand/20 rounded-full text-base w-full sm:w-auto"
                     >
-                      ← Switch Plan
-                    </button>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="max-w-md mx-auto"
-                    >
-                      <div className="w-16 h-16 bg-brand-light text-brand rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <Sparkles size={32} />
-                      </div>
-                      <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight mb-2">
-                        Get Pixi for ₹2,000
-                      </h3>
-                      <p className="text-slate-500 text-sm mb-8 max-w-sm mx-auto">
-                        Create your account and activate your bot with lifetime access.
-                      </p>
-                      <Button
-                        onClick={() => router.push("/auth/signup")}
-                        className="bg-brand text-white font-extrabold h-14 px-10 shadow-lg shadow-brand/20 rounded-full text-base"
-                      >
-                        Create Account & Continue
-                        <ArrowRight size={18} className="ml-2" />
-                      </Button>
-                      <p className="text-xs text-slate-400 mt-4">
-                        Already have an account?{" "}
-                        <button onClick={() => router.push("/auth/signin")} className="text-brand font-bold hover:underline">
-                          Log In
-                        </button>
-                      </p>
-                    </motion.div>
-                  </div>
-                )}
+                      Log In to Dashboard
+                      <ArrowRight size={18} className="ml-2" />
+                    </Button>
+                  </motion.div>
+                </div>
 
               </div>
             </motion.div>

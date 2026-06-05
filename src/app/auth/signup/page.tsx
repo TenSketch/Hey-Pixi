@@ -1,20 +1,31 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Bot, Mail, Lock, ArrowRight, User as UserIcon, Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
-export default function SignUpPage() {
+function SignUpForm() {
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [isPrefilled, setIsPrefilled] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    if (emailParam) {
+      setEmail(emailParam);
+      setIsPrefilled(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,12 +107,18 @@ export default function SignUpPage() {
                         <input 
                             type="email" 
                             required
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand transition-colors"
+                            disabled={isPrefilled}
+                            className={`w-full border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-brand transition-colors ${
+                              isPrefilled ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-50 border-slate-200 text-slate-900"
+                            }`}
                             placeholder="name@company.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
+                    {isPrefilled && (
+                      <p className="text-[10px] text-brand/80 font-medium mt-1">You are joining via a workspace invite.</p>
+                    )}
                 </div>
                 <div>
                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Password</label>
@@ -166,5 +183,20 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-brand animate-spin" />
+          <p className="text-sm text-slate-500 font-semibold">Loading Signup...</p>
+        </div>
+      </div>
+    }>
+      <SignUpForm />
+    </Suspense>
   );
 }

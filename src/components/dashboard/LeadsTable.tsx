@@ -34,9 +34,10 @@ interface Lead {
 
 interface LeadsTableProps {
   data: Lead[];
+  userRole: "admin" | "manager" | "viewer";
 }
 
-export function LeadsTable({ data }: LeadsTableProps) {
+export function LeadsTable({ data, userRole }: LeadsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -285,6 +286,7 @@ export function LeadsTable({ data }: LeadsTableProps) {
         lead={selectedLead}
         isOpen={!!selectedLead}
         onClose={() => setSelectedLead(null)}
+        userRole={userRole}
       />
     </div>
   );

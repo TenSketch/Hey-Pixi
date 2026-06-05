@@ -26,6 +26,7 @@ interface LeadDetailsSheetProps {
   lead: Lead | null;
   isOpen: boolean;
   onClose: () => void;
+  userRole: "admin" | "manager" | "viewer";
 }
 
 const STATUS_OPTIONS = [
@@ -36,7 +37,7 @@ const STATUS_OPTIONS = [
   { value: "resolved", label: "Resolved", color: "bg-slate-100 text-slate-700 border-slate-200" },
 ];
 
-export function LeadDetailsSheet({ lead: initialLead, isOpen, onClose }: LeadDetailsSheetProps) {
+export function LeadDetailsSheet({ lead: initialLead, isOpen, onClose, userRole }: LeadDetailsSheetProps) {
   const [lead, setLead] = useState<Lead | null>(initialLead);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -95,7 +96,7 @@ export function LeadDetailsSheet({ lead: initialLead, isOpen, onClose }: LeadDet
                     <select 
                         value={lead.status}
                         onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
-                        disabled={isUpdating}
+                        disabled={isUpdating || userRole === "viewer"}
                         className={cn(
                             "appearance-none text-[10px] uppercase font-bold py-1.5 pl-3 pr-8 rounded-full border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/50 shadow-sm",
                             STATUS_OPTIONS.find(s => s.value === lead.status)?.color || "bg-slate-100 text-slate-700 border-slate-200"

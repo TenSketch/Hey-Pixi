@@ -5,6 +5,7 @@ import { BotConfig, User, Lead } from "@/models";
 import { Bot, MessageSquare, TrendingUp, Users } from "lucide-react";
 import { OverviewCharts } from "@/components/dashboard/OverviewCharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default async function DashboardOverview() {
   const session = await auth();
@@ -20,7 +21,10 @@ export default async function DashboardOverview() {
     });
   }
 
-  const bots = await BotConfig.find({ userId: dbUser._id });
+  const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+  const { ownerId, role: effectiveRole, isPersonal } = await getActiveWorkspaceContextMongoose(dbUser);
+
+  const bots = await BotConfig.find({ userId: ownerId });
   const activeBots = bots.filter(b => b.isActive).length;
   const botIds = bots.map(b => b._id);
 
@@ -82,9 +86,21 @@ export default async function DashboardOverview() {
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-8">
-       <div>
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h2>
-            <p className="text-slate-500 mt-1">Here&apos;s what&apos;s happening with your AI agents today.</p>
+       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h2>
+                <p className="text-slate-500 mt-1">
+                    Here&apos;s what&apos;s happening with {isPersonal ? "your" : "the workspace"} AI agents today.
+                </p>
+            </div>
+            <div className={cn(
+                "px-3 py-1.5 rounded-full text-xs font-bold border w-fit capitalize",
+                effectiveRole === "admin" ? "bg-rose-50 text-rose-700 border-rose-200" :
+                effectiveRole === "manager" ? "bg-violet-50 text-violet-700 border-violet-200" :
+                "bg-slate-50 text-slate-700 border-slate-200"
+            )}>
+                Active Role: {effectiveRole}
+            </div>
        </div>
 
        {/* Top Stats Cards */}

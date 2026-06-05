@@ -53,7 +53,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const bot = await BotConfig.findOne({ _id: botId, userId: dbUser._id });
+    const { getActiveWorkspaceContextMongoose } = await import("@/lib/workspace");
+    const { ownerId, role: effectiveRole } = await getActiveWorkspaceContextMongoose(dbUser);
+
+    // Enforce RBAC
+    if (effectiveRole === "viewer") {
+        return NextResponse.json({ error: "Unauthorized: Viewers cannot make payments" }, { status: 403 });
+    }
+
+    const bot = await BotConfig.findOne({ _id: botId, userId: ownerId });
     if (!bot) {
         return NextResponse.json({ error: "Bot not found or unauthorized" }, { status: 403 });
     }
@@ -63,7 +71,7 @@ export async function POST(req: Request) {
 
     // Store purchase details (unique razorpayPaymentId prevents replay)
     await Payment.create({
-        userId: dbUser._id,
+        userId: ownerId,
         botId,
         amount: PRICING.BOT_ACTIVATION_AMOUNT_PAISE,
         currency: PRICING.CURRENCY,

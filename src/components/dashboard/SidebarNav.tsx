@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Activity, BarChart3, Bot } from "lucide-react";
+import { Activity, BarChart3, Bot, User as UserIcon } from "lucide-react";
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -12,6 +12,7 @@ export function SidebarNav() {
     { href: "/dashboard", label: "Overview", icon: Activity, exact: true },
     { href: "/dashboard/bots", label: "AI Agents", icon: Bot, exact: false },
     { href: "/dashboard/leads", label: "Leads CRM", icon: BarChart3, exact: false },
+    { href: "/dashboard/profile", label: "My Profile", icon: UserIcon, exact: false },
   ];
 
   return (

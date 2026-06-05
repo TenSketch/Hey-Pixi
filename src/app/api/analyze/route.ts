@@ -1,6 +1,9 @@
 import { rateLimit } from "@/lib/rate-limit";
 import Groq from "groq-sdk";
 import path from "path";
+import { auth } from "@/auth";
+import dbConnect from "@/lib/mongodb";
+import { User } from "@/models";
 
 const limiter = rateLimit({
     interval: 60 * 1000, 
@@ -108,6 +111,21 @@ export async function POST(req: Request) {
 
         if (isRateLimited) {
             return sendError("Rate limit exceeded. Highly intensive analysis is limited to 3 per minute.");
+        }
+
+        const session = await auth();
+        if (!session?.user?.email) {
+            return sendError("Unauthorized");
+        }
+
+        await dbConnect();
+        const dbUser = await User.findOne({ email: session.user.email });
+        if (!dbUser) {
+            return sendError("User not found");
+        }
+
+        if (dbUser.role === "viewer") {
+            return sendError("Unauthorized: Viewers cannot trigger content analysis");
         }
 
         const { url, role, botName, pdfBase64, fileName } = await req.json();
