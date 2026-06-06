@@ -1,81 +1,83 @@
-# Hey-Pixi API Documentation
+# The Analysis Engine — Deep Dive
 
-Welcome to the Hey-Pixi API documentation. This document provides a comprehensive overview of the backend services, their logic, and the core engine that powers our intelligent AI agent creation.
+> For the full request/response contract see [API Reference → /api/analyze](./api-reference.md#analysis-engine). For the LLM specifics see [Groq API](./groq-api.md). This document focuses on **how the engine turns raw input into a system prompt and why it's built this way.**
 
----
-
-## 🚀 Core Endpoints
-
-### 1. `POST /api/analyze` (The Discovery Engine)
-This endpoint is responsible for scraping a website, understanding its business context, and generating a highly specialized AI system prompt.
-
-- **Request Body**:
-  ```json
-  {
-    "url": "https://yourbusiness.com",
-    "role": "Customer Support Lead",
-    "botName": "Pixi"
-  }
-  ```
-- **Response**: `text/event-stream` (Server-Sent Events)
-- **SSE Events**:
-  - `status`: Progress updates (e.g., "Reading your-url...", "Analyzing business model...")
-  - `error`: Error messages if the process fails.
-  - `success`: The final payload containing:
-    - `prompt`: The generated system prompt.
-    - `extraction`: A structured JSON of the business profile.
+The Analysis Engine (`src/app/api/analyze/route.ts`) is the heart of Hey-Pixi. It accepts a **website URL** or a **PDF**, builds a knowledge base, and produces a production-ready AI system prompt — streaming progress to the UI the whole time.
 
 ---
 
-### 2. `POST /api/chat` (The Intelligence Service)
-Handles real-time conversation between users and the AI bot. This service is designed to be lean, fast, and secure.
+## 1. Two input modes
 
-- **Logic**:
-  1. **Configuration Retrieval**: Fetches the bot's custom system prompt from MongoDB based on `botId`.
-  2. **Prompt Hardening**: Appends strict guardrails (brevity, security, tool usage instructions) to ensure consistent behavior.
-  3. **Context Management**: Implements a **Sliding Window** (last 10 messages) to maintain conversational context without exceeding token limits.
-  4. **Lead Capture Tooling**: Automatically injects the `capture_lead_info` tool. If the LLM identifies a lead (name + contact info), it triggers a database write via `LeadService`.
-  5. **Validation**: All captured data is validated against regex patterns before being persisted.
+| Mode | Trigger | Source extraction |
+| --- | --- | --- |
+| **Website** | `{ url, role, botName? }` | Jina Reader + multi-page crawl |
+| **PDF** | `{ pdfBase64, fileName?, role, botName? }` | `pdf-parse` text, with `tesseract.js` OCR fallback |
 
----
-
-## 🧠 The Analysis Engine: Deep Dive
-
-The "Analysis Engine" is the heart of Hey-Pixi. Here is a breakdown of how it works and why it’s designed this way.
-
-### 1. How it works (The Pipeline)
-1. **Source Extraction**: We use **Jina Reader** to convert the provided URL into a clean, markdown-formatted text.
-2. **Context Discovery**: Our algorithm scans the extracted links to find high-value pages (e.g., `/pricing`, `/about`, `/services`) while ignoring low-value "noise" (e.g., `/login`, `/dashboard`).
-3. **Multi-Page Synthesis**: We crawl up to 5 additional sub-pages in parallel to build a holistic "Knowledge Base" for the business.
-4. **Semantic JSON Distillation**: Using **Llama-3.3-70B**, we compress thousands of words of raw text into a structured JSON profile containing:
-   - Business Name & Tone
-   - Core Services & Pricing
-   - Key Facts & Target Audience
-   - Operational Rules
-5. **Prompt Architecture**: A specialized "Prompt Architect" agent uses the JSON profile to draft a production-ready system prompt, ensuring the bot knows *exactly* who it is and how to behave.
-
-### 2. What it is doing
-It is transforming **unstructured web data** into a **structured identity**. Instead of just "reading" a page, it's "interviewing" the website to understand the brand's DNA.
-
-### 3. Why it works this way
-- **Efficiency**: Fetching only 5 sub-pages balances deep context with fast execution.
-- **Accuracy**: By first extracting JSON and *then* generating the prompt, we reduce hallucinations. The LLM focuses on one task at a time: "What are the facts?" then "How should I speak?".
-- **Scalability**: The modular pipeline allows us to swap models or data sources easily as the platform grows.
+Both modes converge on the same two-step Groq prompting pipeline.
 
 ---
 
-## 🛡️ Security & Rate Limiting
+## 2. Website pipeline (Jina Reader)
 
-- **SSRF Protection**: All URLs are validated to prevent Server-Side Request Forgery.
-- **Rate Limits**: The `/api/analyze` endpoint is limited to **3 requests per minute per IP** to prevent abuse of the high-compute scraping and AI pipelines.
-- **Data Privacy**: No scraped content is permanently stored; only the distilled prompt and bot configuration are persisted in your private database.
+1. **Source extraction** — `fetchWithJina(url)` calls `https://r.jina.ai/<url>` with `X-With-Links-Summary: true`, returning clean markdown **and** a links map.
+2. **Context discovery** — `extractInternalLinks()` scans the links:
+   - keeps **same-domain** links only,
+   - drops anchors and the homepage itself,
+   - **skips noise**: `login`, `signup`, `auth`, `dashboard`, `app`, …,
+   - **prioritizes knowledge**: `about`, `pricing`, `service`, `feature`, `product`, `contact`, `docs`, `solution`, `plan`,
+   - returns up to **5** unique pages (priority pages first, then fallbacks).
+3. **Multi-page synthesis** — each sub-page is fetched (with progress events) and concatenated into one knowledge blob. Failures on individual pages are logged and skipped, not fatal.
 
 ---
 
-## 🛠️ Error Handling
+## 3. PDF pipeline (text + OCR)
 
-The API uses standard HTTP status codes:
-- `400 Bad Request`: Missing parameters or invalid URL.
-- `429 Too Many Requests`: Rate limit exceeded.
-- `404 Not Found`: Bot ID not found in database.
-- `500 Internal Server Error`: Pipeline failure (e.g., Jina or Groq downtime).
+1. `pdf-parse` extracts embedded text.
+2. **OCR fallback** — if the extracted text is suspiciously short (< 100 chars, i.e. likely a scanned/image PDF), the engine renders page screenshots (`getScreenshot({ scale: 2.0 })`) and runs `tesseract.js` (`eng`) page by page, emitting `OCR processing page i/n` events. Trained data is cached under `src/lib/ocr-data`.
+3. If still effectively empty after OCR, the engine returns a clear error.
+
+---
+
+## 4. Two-step Groq prompting
+
+The combined knowledge is truncated to **~15,000 chars**, then:
+
+**Step 1 — Extraction** (`llama-3.1-8b-instant`, `temperature 0.1`, `response_format: json_object`)
+→ a structured Business Profile JSON: `businessName`, `tone`, `coreServices`, `pricing`, `keyFacts`, `targetAudience`, `rules`.
+
+**Step 2 — Prompt Architect** (`llama-3.3-70b-versatile`, `temperature 0.3`)
+→ a first-person system prompt covering Identity & Mission, Knowledge Base, Operational Guidelines (brevity, no hallucination, gentle lead capture), and Tone.
+
+The result streams back as `{ success: true, prompt, extraction }`.
+
+### Why split into two steps?
+- **Accuracy** — extracting facts first, then writing the prompt, reduces hallucination. Each call has one job: *"What are the facts?"* then *"How should I speak?"*
+- **Cost/speed** — the cheap fast model does the bulk extraction; the bigger model is used only once, where prompt quality matters most.
+- **Determinism** — JSON mode + low temperature make extraction reliable and parseable.
+
+---
+
+## 5. Streaming (SSE)
+
+The route returns a `ReadableStream` with `Content-Type: text/event-stream`. Events:
+- `{ status }` — `Reading <url>…`, `Fetching deeper context (i/n)…`, `Reading PDF…`, `OCR processing page i/n…`, `Analyzing business model…`, `Generating optimized prompt…`
+- `{ error }` — failure; stream closes.
+- `{ success, prompt, extraction }` — final payload.
+
+This gives the user live, reassuring feedback during a multi-second pipeline instead of a frozen spinner.
+
+---
+
+## 6. Safeguards
+- **Auth + RBAC** — must be signed in; viewers are blocked.
+- **Rate limit** — 3 requests/min per IP (this is a high-compute path).
+- **SSRF** — private/internal/metadata URLs are blocked (`isSSRFTarget`, see [Security](./security.md)).
+- **Bounded cost** — knowledge truncated to 15k chars; bot name/role lengths capped.
+
+---
+
+## Related docs
+- [Groq API Integration](./groq-api.md)
+- [API Reference](./api-reference.md)
+- [Architecture](./architecture.md)
+- [Security](./security.md)

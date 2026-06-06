@@ -1,36 +1,96 @@
 # Hey-Pixi Architecture
 
-Hey-Pixi is an autonomous AI agent creation platform designed to help businesses quickly spin up customer support and sales bots by simply providing a website URL.
+Hey-Pixi is an autonomous AI agent creation platform. A business provides a website URL (or a PDF), and the platform crawls/parses it, distills a structured business profile, and generates a production-ready AI assistant that can hold conversations and autonomously capture leads — all embeddable on any site as a chat widget.
+
+This document is the high-level map. Deep dives live in the linked sub-docs.
 
 ## Tech Stack
-- **Frontend**: Next.js 14+ (App Router), React, Tailwind CSS
-- **Backend**: Next.js API Routes (Edge & Serverless)
-- **Database**: MongoDB (via Mongoose)
-- **LLM Engine**: Groq (Llama-3.3-70b-versatile)
-- **Web Scraping**: Jina AI Reader API
-- **Integrations**: Gupshup (WhatsApp), Razorpay (Payments)
+- **Framework:** Next.js 16 (App Router), React 19, TypeScript
+- **Styling:** Tailwind CSS v4, Framer Motion, GSAP
+- **Auth:** Auth.js (NextAuth v5 beta) — Credentials + JWT, MongoDB adapter
+- **Database:** MongoDB via **Mongoose** (app) and the **native driver** (auth adapter + select writes)
+- **LLM Engine:** Groq — `llama-3.1-8b-instant` + `llama-3.3-70b-versatile`
+- **Web Scraping:** Jina AI Reader API
+- **Document parsing:** `pdf-parse` + `tesseract.js` OCR fallback
+- **Payments:** Razorpay (one-time activation + recurring subscription)
+- **Email:** Nodemailer over SMTP
+- **UI primitives:** Radix UI, lucide-react, recharts, @tanstack/react-table, sonner
+
+## System map
+
+```
+Marketing site (/, sections)         Dashboard (/dashboard/*)            Embeddable widget (/widget/[botId])
+        │                                   │                                      │
+        │                          Auth.js (middleware + RBAC)                     │
+        ▼                                   ▼                                      ▼
+                         ┌──────────────── API routes / Server Actions ─────────────────┐
+                         │  /api/analyze   /api/chat   /api/bots   /api/leads/capture   │
+                         │  /api/auth/*    /api/checkout/*   /api/webhook/payment        │
+                         └───────────────────────────────────────────────────────────────┘
+              │                 │                    │                  │             │
+           Groq             Jina/PDF/OCR        MongoDB            Razorpay        SMTP
+        (LLM engine)      (knowledge source)   (Mongoose)         (payments)      (email)
+```
 
 ## Core Workflows
 
-### 1. Agent Creation (The Analysis Pipeline)
-The most complex part of Hey-Pixi is how it converts a URL into a highly-tuned AI assistant.
+### 1. Agent Creation — the Analysis Pipeline
+The most complex part: converting a URL/PDF into a tuned assistant. Streamed to the UI via Server-Sent Events.
 
-1. **User Input**: User provides a target URL (e.g., `https://flowcept.in/`).
-2. **Jina Discovery**: The backend calls Jina Reader to fetch the main page and extract internal links.
-3. **Multi-Page Crawling**: The system identifies priority pages (About, Pricing, Docs, Services) and fetches them in parallel.
-4. **Semantic Extraction**: The raw markdown from all pages is sent to Groq. Groq is instructed to extract a structured `Business Profile` (JSON) containing the business name, tone, core services, and pricing.
-5. **Prompt Architecture**: A secondary Groq call uses the JSON profile to write a highly-optimized, first-person system prompt for the agent.
-6. **Streaming**: Throughout this process, the backend streams progress back to the frontend using Server-Sent Events (SSE).
+1. **Input** — user provides a URL **or** uploads a PDF, plus a `role` and optional `botName`.
+2. **Knowledge gathering:**
+   - *Website:* Jina Reader fetches the main page and discovers internal links; the system crawls up to 5 high-value sub-pages (about, pricing, services…) while skipping noise (login, dashboard…).
+   - *PDF:* `pdf-parse` extracts text; if a page is image-based (little/no text), `tesseract.js` OCR kicks in page by page.
+3. **Semantic extraction** — combined knowledge (≤15k chars) → Groq `llama-3.1-8b-instant` returns a structured JSON **Business Profile** (name, tone, services, pricing, facts, audience, rules).
+4. **Prompt architecture** — the JSON profile → Groq `llama-3.3-70b-versatile` writes a first-person system prompt.
+5. **Result** — streamed back as `{ success, prompt, extraction }`; the user reviews/edits and saves a `BotConfig`.
 
-### 2. Chat & Lead Capture
-When a user interacts with a Hey-Pixi bot:
+Detail: [Groq API Integration](./groq-api.md), [API Reference](./api-reference.md).
 
-1. **Context Loading**: The bot's specific `systemPrompt` is loaded from MongoDB.
-2. **Conversation Window**: The last 10 messages are passed to the Groq API to maintain context without exceeding token limits.
-3. **Tool Calling**: The LLM is equipped with a `capture_lead_info` tool. If the user provides a name and phone/email, the LLM autonomously triggers this tool.
-4. **Data Persistence**: When the tool is called, the backend validates the data using regex (email/phone) and saves the lead to MongoDB via `LeadService`.
+### 2. Activation
+A new bot is `isActive: false`. The owner pays a one-time activation fee via Razorpay; signature verification flips it active. Only active bots serve traffic. Detail: [Payments](./payments.md).
 
-## Security & Rate Limiting
-- **Rate Limiting**: Custom implementation using an in-memory token bucket to prevent abuse (e.g., maximum 3 analysis requests per minute per IP).
-- **SSRF Protection**: URL targets are validated against an internal blocklist to prevent Server-Side Request Forgery attacks.
-- **API Keys**: All sensitive integrations (Groq, Jina, Gupshup) are strictly handled server-side.
+### 3. Chat & Lead Capture
+1. The widget loads the bot's `systemPrompt` from MongoDB.
+2. A sliding window of the last 10 messages is sent to Groq with brevity/security/button guardrails.
+3. The model has a `capture_lead_info` tool; when a user shares name + contact, it's validated and saved via `LeadService`, which emails the bot owner.
+4. Token usage is metered against the owner's plan limit. Detail: [Chatbot & Widget](./chatbot.md).
+
+### 4. Workspaces & Teams
+Each user owns a workspace; others can be invited as `admin`/`manager`/`viewer`. All agents/leads/payments are scoped to the active workspace owner. Detail: [Workspaces & RBAC](./workspaces-rbac.md).
+
+## Directory layout (`src/`)
+
+```
+app/
+  api/                 Route handlers (analyze, chat, bots, auth, checkout, webhook, leads)
+  auth/                Sign-in / sign-up / forgot- & reset-password pages
+  dashboard/           Authenticated app: bots, leads, profile, overview
+  widget/[botId]/      Standalone embeddable chat widget
+  page.tsx             Marketing landing page
+components/            chat/, dashboard/, sections/, layout/, ui/, providers/
+lib/
+  actions/             Server actions (bot, lead, team, user, workspace)
+  services/            chat.service.ts, lead.service.ts
+  constants.ts errors.ts rate-limit.ts mail.ts workspace.ts utils.ts
+  mongodb.ts mongodb-client.ts
+models/                User, BotConfig, Lead, Payment, ProjectInvite
+auth.ts auth.config.ts middleware.ts
+```
+
+## Cross-cutting concerns
+- **Security** — hardened headers, RBAC, rate limiting, SSRF blocking, payment-signature verification, LLM XSS/injection defenses. See [Security](./security.md).
+- **Database** — two connection layers (Mongoose + native). See [Database Models](./database-models.md).
+- **Email** — transactional notifications. See [Email](./email.md).
+
+## Documentation index
+- [Setup Guide](./setup.md)
+- [Groq API Integration](./groq-api.md)
+- [Chatbot & Widget](./chatbot.md)
+- [API Reference](./api-reference.md)
+- [Authentication](./authentication.md)
+- [Workspaces & RBAC](./workspaces-rbac.md)
+- [Payments](./payments.md)
+- [Email](./email.md)
+- [Database Models](./database-models.md)
+- [Security](./security.md)
